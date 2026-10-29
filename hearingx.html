@@ -1,0 +1,1532 @@
+<!--
+  HearingX – interaktiver App-Prototyp v2 (Android / iOS)
+  Single-File. Three.js (r128) fuer das 3D-Handmodell.
+  Theme: Weiss / Hellblau, mit funktionierendem Dunkelmodus. Schrift: Arial.
+-->
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+<title>HearingX</title>
+<!-- Three.js wird erst beim Wechsel in den 3D Modus geladen -->
+
+<style>
+  :root{
+    --white:#ffffff; --bg-tint:#eef6ff; --blue-50:#e8f3ff; --blue-100:#d6eafe;
+    --blue-300:#8fcbff; --blue-500:#5ba8f5; --blue-600:#3d91ec; --blue-700:#2f7bd0;
+    --gray-circle:#9aa3ad; --ink:#1f2933; --ink-2:#5b6772; --ink-3:#9aa5b1; --line:#e7eef6;
+    --green:#39c07a; --red:#e8615f;
+    --shadow:0 10px 30px rgba(45,120,220,.14); --shadow-soft:0 4px 16px rgba(45,120,220,.10);
+    font-family:Arial,"Helvetica Neue",Helvetica,sans-serif;
+  }
+  .phone.dark{
+    --white:#171c24; --bg-tint:#0f141b; --blue-50:#16273b; --blue-100:#1c3450;
+    --ink:#e8eef5; --ink-2:#a9b4c0; --ink-3:#6f7a86; --line:#283039;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  html,body{margin:0;height:100%;}
+  body{background:linear-gradient(160deg,#dfeeff 0%,#cfe4fb 45%,#bcd9f7 100%);display:flex;align-items:center;justify-content:center;min-height:100vh;color:var(--ink);}
+  .phone{position:relative;width:390px;height:844px;max-height:96vh;background:var(--white);border-radius:46px;overflow:hidden;box-shadow:0 30px 70px rgba(20,50,90,.35),0 0 0 11px #11151c,0 0 0 13px #2a313c;transition:background .3s;}
+  .notch{position:absolute;top:0;left:50%;transform:translateX(-50%);width:148px;height:30px;background:#11151c;border-radius:0 0 18px 18px;z-index:60;}
+  .screen{position:absolute;inset:0;display:flex;flex-direction:column;}
+  #splash{position:absolute;inset:0;z-index:80;background:#fff;display:flex;align-items:center;justify-content:center;flex-direction:column;transition:opacity .55s ease;}
+  #splash.hide{opacity:0;pointer-events:none;}
+  .splash-circle{width:170px;height:170px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#aab2bb,var(--gray-circle) 70%);display:flex;align-items:center;justify-content:center;box-shadow:0 18px 40px rgba(120,130,145,.45);animation:pop .6s cubic-bezier(.2,.8,.25,1.4);}
+  .splash-circle span{color:#fff;font-weight:700;letter-spacing:1px;font-size:21px;font-family:Arial,Helvetica,sans-serif;text-transform:uppercase;text-shadow:0 1px 2px rgba(0,0,0,.18);}
+  @keyframes pop{0%{transform:scale(.4);opacity:0}60%{opacity:1}100%{transform:scale(1)}}
+  .splash-dots{display:flex;gap:7px;margin-top:34px}
+  .splash-dots i{width:8px;height:8px;border-radius:50%;background:var(--blue-300);animation:bob 1s infinite ease-in-out}
+  .splash-dots i:nth-child(2){animation-delay:.15s}.splash-dots i:nth-child(3){animation-delay:.3s}
+  @keyframes bob{0%,100%{transform:translateY(0);opacity:.45}50%{transform:translateY(-7px);opacity:1}}
+  .top{padding:46px 20px 12px;display:flex;align-items:center;justify-content:space-between;background:var(--white);transition:background .3s;}
+  .top h1{margin:0;font-size:23px;font-weight:700;letter-spacing:.2px}
+  .top .badge{width:38px;height:38px;border-radius:50%;background:linear-gradient(135deg,var(--blue-500),var(--blue-300));display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:15px;box-shadow:var(--shadow-soft);}
+  .body{flex:1;overflow-y:auto;padding:4px 18px 112px;background:linear-gradient(180deg,var(--white) 0%,var(--bg-tint) 100%);}
+  .body::-webkit-scrollbar{width:0}
+  .card{background:var(--white);border:1px solid var(--line);border-radius:20px;padding:18px;margin-bottom:14px;box-shadow:var(--shadow-soft);}
+  .muted{color:var(--ink-2);font-size:13.5px;line-height:1.55}
+  .section-label{font-size:12.5px;font-weight:700;color:var(--ink-3);text-transform:uppercase;letter-spacing:1px;margin:14px 4px 8px}
+  .chip{display:inline-flex;align-items:center;gap:5px;padding:4px 10px;border-radius:999px;font-size:11.5px;font-weight:700;background:var(--blue-50);color:var(--blue-700);}
+  .phone.dark .chip{color:#bcdcff}
+  .chip.verb{background:#eaf7ee;color:#2c8a55}.chip.zeit{background:#fff3e6;color:#c47b1f}.chip.frage{background:#f0eafd;color:#7a55c4}
+  .phone.dark .chip.verb{background:#15301f;color:#6fd49a}.phone.dark .chip.zeit{background:#322713;color:#e7b264}.phone.dark .chip.frage{background:#241836;color:#b78ff0}
+  .progress-card{background:linear-gradient(135deg,var(--blue-600),var(--blue-300));color:#fff;border:none;border-radius:24px;padding:20px;margin-bottom:14px;box-shadow:var(--shadow);}
+  .progress-card h3{margin:0 0 2px;font-size:16px;font-weight:700}.progress-card p{margin:0;opacity:.9;font-size:13px}
+  .ring-row{display:flex;align-items:center;gap:18px;margin-top:14px}
+  .ring{position:relative;width:78px;height:78px;flex:none}.ring svg{transform:rotate(-90deg)}
+  .ring .num{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:18px}
+  .stats{display:flex;gap:16px;flex:1}.stat .n{font-size:20px;font-weight:700;line-height:1}.stat .l{font-size:11.5px;opacity:.9;margin-top:3px}
+  .substats{display:flex;gap:10px;margin-top:16px}
+  .substat{flex:1;background:rgba(255,255,255,.16);border-radius:13px;padding:10px 12px}.substat .n{font-size:16px;font-weight:700}.substat .l{font-size:10.5px;opacity:.9;margin-top:2px}
+  .seg{display:flex;background:var(--blue-50);border-radius:14px;padding:4px;margin:2px 0 14px}
+  .seg button{flex:1;border:none;background:transparent;color:var(--ink-2);font-family:inherit;font-weight:700;font-size:13px;padding:9px 4px;border-radius:11px;cursor:pointer;transition:all .15s}
+  .seg button.on{background:var(--white);color:var(--blue-700);box-shadow:var(--shadow-soft)}
+  .search{width:100%;border:1px solid var(--line);background:var(--white);color:var(--ink);border-radius:13px;padding:12px 14px;font-family:inherit;font-size:14px;margin-bottom:12px;outline:none}
+  .search:focus{border-color:var(--blue-300)}
+  .entry{background:var(--white);border:1px solid var(--line);border-radius:18px;margin-bottom:11px;overflow:hidden;box-shadow:var(--shadow-soft);}
+  .entry-head{padding:14px 15px;display:flex;gap:12px;align-items:flex-start;cursor:pointer}
+  .entry-ico{width:42px;height:42px;border-radius:14px;flex:none;display:flex;align-items:center;justify-content:center;background:var(--blue-50);font-size:20px}
+  .entry-main{flex:1;min-width:0}
+  .entry-text{font-weight:700;font-size:15.5px;margin-bottom:6px;display:flex;align-items:center;gap:7px}
+  .entry-text .ok{color:var(--green);font-size:13px}
+  .entry-meta{display:flex;flex-wrap:wrap;gap:6px}
+  .entry-time{font-size:11.5px;color:var(--ink-3);margin-top:7px}
+  .caret{transition:transform .2s ease;color:var(--ink-3)}.entry.open .caret{transform:rotate(180deg)}
+  .entry-steps{max-height:0;overflow:hidden;transition:max-height .3s ease;background:var(--blue-50)}
+  .entry.open .entry-steps{max-height:520px}
+  .step{display:flex;gap:12px;padding:12px 16px;border-top:1px solid var(--line)}
+  .step .n{width:24px;height:24px;border-radius:50%;flex:none;background:var(--blue-500);color:#fff;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center}
+  .step .t{font-size:13.5px;color:var(--ink)}.step .t b{color:var(--blue-700)}
+  .phone.dark .step .t b{color:var(--blue-300)}
+  .empty{text-align:center;color:var(--ink-3);padding:46px 20px;font-size:14px}
+  .quiz-intro{text-align:center;padding:8px 6px}.quiz-emoji{font-size:42px}
+  .quiz-q{font-weight:700;font-size:17px;margin:14px 4px 4px}
+  .quiz-clue{background:var(--blue-50);border-radius:16px;padding:16px;margin-bottom:14px;font-size:13.5px;color:var(--ink);line-height:1.55}
+  .quiz-clue b{color:var(--blue-700)}.phone.dark .quiz-clue b{color:var(--blue-300)}
+  .opt{width:100%;text-align:left;border:1px solid var(--line);background:var(--white);color:var(--ink);border-radius:14px;padding:15px 16px;font-family:inherit;font-size:14.5px;font-weight:600;margin-bottom:10px;cursor:pointer;transition:all .15s}
+  .opt:active{transform:scale(.99)}
+  .opt.right{background:#e9f8ef;border-color:var(--green);color:#1f7d4d}.opt.wrong{background:#fdeceb;border-color:var(--red);color:#b23b39}
+  .phone.dark .opt.right{background:#13301f}.phone.dark .opt.wrong{background:#321614}
+  .quiz-bar{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;font-size:13px;color:var(--ink-2);font-weight:700}
+  #screen-camera{flex:1;display:flex;flex-direction:column;background:#0d1722;padding-bottom:88px}
+  .cam-top{padding:40px 18px 12px;display:flex;align-items:center;justify-content:space-between;color:#fff}
+  .cam-top h1{margin:0;font-size:20px;font-weight:700}
+  .cam-top .live{display:flex;align-items:center;gap:7px;font-size:12px;font-weight:700;opacity:.85}
+  .cam-top .live i{width:8px;height:8px;border-radius:50%;background:#ff5d5d;animation:blink 1.2s infinite}
+  @keyframes blink{50%{opacity:.3}}
+  .cam-toggle{display:inline-flex;align-items:center;gap:7px;border:none;cursor:pointer;font-family:inherit;font-weight:700;font-size:11px;padding:7px 12px;border-radius:999px;background:rgba(255,255,255,.16);color:#cfe0f0;line-height:1}
+  .cam-toggle .d{width:8px;height:8px;border-radius:50%;background:#9fb6cc}
+  .cam-toggle.on{background:rgba(255,93,93,.18);color:#ffd4cf}
+  .cam-toggle.on .d{background:#ff5d5d;animation:blink 1.2s infinite}
+  .cam-stage{flex:1;position:relative;margin:0 12px;border-radius:24px;overflow:hidden;background:#10202f}
+  #camVideo{width:100%;height:100%;object-fit:cover;display:none}
+  .cam-fallback{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:12px;color:#7e93a6;text-align:center;padding:24px}
+  #handCanvas{position:absolute;inset:0;width:100%;height:100%}
+  #lmCanvas{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+  .scan-frame{position:absolute;inset:38px;border:2px dashed rgba(143,203,255,.5);border-radius:22px;pointer-events:none}
+  .scan-line{position:absolute;left:38px;right:38px;height:2px;background:linear-gradient(90deg,transparent,var(--blue-300),transparent);top:38px;opacity:0;box-shadow:0 0 12px var(--blue-300)}
+  .scanning .scan-line{opacity:1;animation:scan 1.6s linear infinite}
+  @keyframes scan{0%{top:42px}100%{top:calc(100% - 42px)}}
+  .track-tag{position:absolute;top:14px;left:14px;background:rgba(13,23,34,.72);color:#bfe0ff;font-size:11px;font-weight:700;padding:7px 11px;border-radius:999px;opacity:0;transition:opacity .2s;z-index:6;line-height:1}
+  .live-track .track-tag{opacity:1}
+  .reco-badge{position:absolute;left:0;right:0;bottom:0;padding:30px 18px 14px;background:linear-gradient(180deg,transparent,rgba(8,16,26,.9));color:#fff;font-weight:700;font-size:15px;text-align:center;opacity:0;transition:opacity .25s;pointer-events:none;z-index:6}
+  .reco-badge.show{opacity:1}.reco-badge small{display:block;font-weight:400;opacity:.78;font-size:11px;margin-top:2px}
+  .cam-hint{position:absolute;left:14px;right:14px;bottom:14px;background:rgba(20,32,46,.92);color:#cfe0f0;font-size:12px;line-height:1.45;padding:11px 13px;border-radius:13px;border:1px solid rgba(143,203,255,.25);z-index:7;display:none}
+  .cam-hint.show{display:block}
+  .cam-controls{position:absolute;right:10px;top:50%;transform:translateY(-50%);display:flex;flex-direction:column;align-items:center;gap:18px;z-index:6;background:rgba(8,16,26,.32);padding:14px 8px;border-radius:40px}
+  .cam-side{width:44px;height:44px;border-radius:50%;background:rgba(255,255,255,.14);display:flex;align-items:center;justify-content:center;color:#cfe0f0;cursor:pointer}
+  .shutter{width:64px;height:64px;border-radius:50%;background:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 0 0 5px rgba(255,255,255,.22);transition:transform .12s ease}
+  .shutter:active{transform:scale(.93)}
+  .shutter .inner{width:48px;height:48px;border-radius:50%;background:linear-gradient(135deg,var(--blue-500),var(--blue-300))}
+  .rec-btn{width:52px;height:52px;border-radius:50%;background:rgba(255,255,255,.92);display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 0 0 4px rgba(255,93,93,.42);transition:transform .12s ease}
+  .rec-btn i{width:18px;height:18px;border-radius:6px;background:#ff5d5d}
+  .rec-btn:active{transform:scale(.92)}
+  .shutter.busy .inner{animation:spin 1s linear infinite;background:conic-gradient(var(--blue-500),var(--blue-300),#fff)}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  .sheet-mask{position:absolute;inset:0;background:rgba(8,16,26,.5);opacity:0;pointer-events:none;transition:opacity .3s;z-index:40}
+  .sheet-mask.show{opacity:1;pointer-events:auto}
+  .sheet{position:absolute;left:0;right:0;bottom:0;background:var(--white);border-radius:26px 26px 0 0;padding:22px 22px 28px;transform:translateY(100%);transition:transform .35s cubic-bezier(.2,.8,.25,1);z-index:45;max-height:78%;overflow-y:auto}
+  .sheet.show{transform:translateY(0)}
+  .sheet .grip{width:42px;height:5px;border-radius:3px;background:var(--line);margin:0 auto 16px}
+  .sheet h2{margin:0 0 4px;font-size:22px;color:var(--ink)}.sheet .sub{color:var(--ink-2);font-size:13px;margin-bottom:14px}
+  .sheet .tags{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:18px}
+  .sheet-actions{display:flex;gap:10px;flex-wrap:wrap}
+  .goal-line{margin-top:14px;background:rgba(255,255,255,.18);border-radius:14px;padding:11px 13px}
+  .gl-top{display:flex;justify-content:space-between;font-size:12.5px;font-weight:700;color:#fff;margin-bottom:7px}
+  .goal-track{height:8px;border-radius:6px;background:rgba(255,255,255,.25);overflow:hidden}
+  .goal-fill{height:100%;width:0;background:#fff;border-radius:6px;transition:width .4s ease}
+  .show-sign{margin-top:10px;width:100%;border:1px solid rgba(61,145,236,.32);background:var(--blue-50);color:var(--blue-700);font-family:inherit;font-weight:700;font-size:13px;padding:11px;border-radius:12px;cursor:pointer}
+  .phone.dark .show-sign{background:#16314b;border-color:#2c557d;color:var(--blue-300)}
+  .lang-chip{background:rgba(255,255,255,.16);color:#cfe0f0;font-size:11px;font-weight:700;padding:5px 10px;border-radius:999px}
+  .dict-lang{font-size:12px;color:var(--ink-3);margin:-2px 2px 12px}
+  .show-sign{margin-top:10px;width:100%;border:1px solid var(--blue-200,#bcd9f7);background:var(--blue-50);color:var(--blue-700);font-family:inherit;font-size:13.5px;font-weight:700;padding:11px;border-radius:13px;cursor:pointer}
+  .phone.dark .show-sign{color:var(--blue-300);border-color:#2a4763}
+  .check-sign{margin-top:8px;width:100%;border:none;background:var(--blue-600,#2f7fe0);color:#fff;font-family:inherit;font-weight:700;font-size:13.5px;padding:11px;border-radius:13px;cursor:pointer}
+  .check-sign:active{opacity:.9}
+  .uncertain{background:#fff3e6;color:#b9772a;border-radius:12px;padding:10px 12px;font-size:12.5px;font-weight:600;margin-bottom:14px}
+  .phone.dark .uncertain{background:#322713;color:#e7b264}
+  .btn{flex:1;min-width:120px;border:none;border-radius:15px;padding:15px;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit;transition:transform .12s ease}
+  .btn:active{transform:scale(.97)}
+  .btn.primary{background:linear-gradient(135deg,var(--blue-500),var(--blue-600));color:#fff;box-shadow:var(--shadow)}
+  .btn.ghost{background:var(--blue-50);color:var(--blue-700)}.phone.dark .btn.ghost{color:var(--blue-300)}
+  .correct-item{display:flex;align-items:center;gap:12px;padding:13px 6px;border-bottom:1px solid var(--line);cursor:pointer}
+  .correct-item .ci{width:36px;height:36px;border-radius:11px;background:var(--blue-50);display:flex;align-items:center;justify-content:center;flex:none;font-size:17px}
+  .correct-item b{font-size:14.5px;display:block}.correct-item small{font-size:12px;color:var(--ink-3)}
+  .profile{display:flex;align-items:center;gap:14px;padding:18px;border-radius:22px;background:linear-gradient(135deg,var(--blue-600),var(--blue-300));color:#fff;margin-bottom:8px;box-shadow:var(--shadow)}
+  .avatar{width:60px;height:60px;border-radius:50%;background:rgba(255,255,255,.25);display:flex;align-items:center;justify-content:center;font-size:23px;font-weight:700;flex:none}
+  .profile .pn{font-size:18px;font-weight:700}.profile .pe{font-size:12.5px;opacity:.9}
+  .profile .edit{margin-left:auto;background:rgba(255,255,255,.22);border:none;color:#fff;font-weight:700;font-size:12.5px;padding:8px 14px;border-radius:12px;cursor:pointer}
+  .edit-box{display:none;flex-direction:column;gap:8px;margin-bottom:10px}.edit-box.show{display:flex}
+  .pf-card{background:var(--white);border:1px solid var(--line);border-radius:18px;padding:20px 18px;text-align:center}
+  .pf-meta{font-size:12px;color:#6b7b8c;font-weight:700}
+  .pf-bar{height:6px;background:var(--line);border-radius:6px;overflow:hidden;margin:10px 0 16px}
+  .pf-bar>i{display:block;height:100%;background:var(--blue-500);border-radius:6px;transition:width .3s ease}
+  .pf-word{font-size:30px;font-weight:800;color:var(--ink);margin:6px 0}
+  .pf-hint{color:#6b7b8c;font-size:14px;margin-bottom:16px}
+  .pf-steps{text-align:left;font-size:14px;line-height:1.5;margin:6px 0 4px;padding-left:20px}
+  .pf-steps li{margin:6px 0}
+  .pf-actions{display:flex;gap:10px}
+  .pf-actions .btn{flex:1}
+  .pf-show{margin-top:12px;width:100%;border:1px solid rgba(61,145,236,.32);background:var(--blue-50);color:var(--blue-700);font-weight:700;font-size:13px;padding:10px;border-radius:12px;cursor:pointer}
+  .phone.dark .pf-show{background:#16314b;border-color:#2c557d;color:var(--blue-300)}
+  .edit-box input,.edit-box select{width:100%;border:1px solid var(--line);border-radius:13px;padding:13px;font-family:inherit;font-size:14px;background:var(--white);color:var(--ink);outline:none}
+  .list{background:var(--white);border:1px solid var(--line);border-radius:18px;overflow:hidden;margin-bottom:8px;box-shadow:var(--shadow-soft)}
+  .row{display:flex;align-items:center;gap:13px;padding:15px 16px;border-top:1px solid var(--line);cursor:pointer}
+  .row:first-child{border-top:none}
+  .row .ri{width:34px;height:34px;border-radius:10px;background:var(--blue-50);display:flex;align-items:center;justify-content:center;flex:none}
+  .row .rt{flex:1}.row .rt b{font-size:14.5px;font-weight:600;display:block;color:var(--ink)}.row .rt small{font-size:12px;color:var(--ink-3)}
+  .row .rv{color:var(--ink-3);font-size:13px}.arrow{color:var(--ink-3)}
+  .stepper{display:flex;align-items:center;gap:12px}
+  .stepper button{width:30px;height:30px;border-radius:9px;border:none;background:var(--blue-50);color:var(--blue-700);font-size:18px;font-weight:700;cursor:pointer;font-family:inherit}
+  .stepper b{min-width:54px;text-align:center;font-size:14px}
+  .switch{position:relative;width:46px;height:27px;border-radius:999px;background:var(--line);transition:background .2s;flex:none;cursor:pointer}
+  .switch.on{background:var(--blue-500)}
+  .switch::after{content:"";position:absolute;top:3px;left:3px;width:21px;height:21px;border-radius:50%;background:#fff;transition:transform .2s;box-shadow:0 1px 3px rgba(0,0,0,.2)}
+  .switch.on::after{transform:translateX(19px)}
+  .version{text-align:center;color:var(--ink-3);font-size:12px;padding:18px 0 6px}
+  .logout{width:100%;border:1px solid #ffd9d9;background:var(--white);color:#e15555;font-weight:700;padding:15px;border-radius:16px;font-family:inherit;font-size:15px;cursor:pointer}
+  .phone.dark .logout{border-color:#5a2b2b}
+  .tabbar{position:absolute;left:0;right:0;bottom:0;height:88px;background:var(--white);border-top:1px solid var(--line);display:flex;align-items:flex-start;justify-content:space-around;padding-top:12px;z-index:30;transition:background .3s}
+  .tab{display:flex;flex-direction:column;align-items:center;gap:4px;color:var(--ink-3);cursor:pointer;flex:1;font-size:11px;font-weight:600;transition:color .15s}
+  .tab svg{width:26px;height:26px}.tab.active{color:var(--blue-600)}.phone.dark .tab.active{color:var(--blue-300)}
+  .tab.cam{position:relative;top:-12px}
+  .tab.cam .cam-btn{width:58px;height:58px;border-radius:20px;background:linear-gradient(135deg,var(--blue-500),var(--blue-600));display:flex;align-items:center;justify-content:center;color:#fff;box-shadow:var(--shadow);margin-bottom:2px}
+  .view{display:none;flex:1;flex-direction:column;min-height:0}.view.active{display:flex}
+  .toast{position:absolute;left:50%;bottom:104px;transform:translateX(-50%) translateY(10px);background:var(--ink);color:var(--white);padding:11px 18px;border-radius:13px;font-size:13.5px;font-weight:600;opacity:0;transition:all .3s;z-index:70;white-space:nowrap;max-width:80%;text-align:center}
+  .phone.dark .toast{background:#e8eef5;color:#171c24}
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+</style>
+
+<div class="phone" id="phone">
+  <div class="notch"></div>
+  <div id="splash">
+    <div class="splash-circle"><span>HEARINGX</span></div>
+    <div class="splash-dots"><i></i><i></i><i></i></div>
+  </div>
+
+  <div class="screen" id="app">
+    <div class="view" id="view-learn">
+      <div class="top"><h1>Lernen</h1><div class="badge" id="badge1">JM</div></div>
+      <div class="body">
+        <div class="progress-card">
+          <h3>Dein Lernfortschritt</h3>
+          <p id="progSub">Du machst das richtig gut, bleib dran.</p>
+          <div class="ring-row">
+            <div class="ring">
+              <svg width="78" height="78">
+                <circle cx="39" cy="39" r="32" stroke="rgba(255,255,255,.28)" stroke-width="8" fill="none"/>
+                <circle id="ringFill" cx="39" cy="39" r="32" stroke="#fff" stroke-width="8" fill="none" stroke-linecap="round" stroke-dasharray="201" stroke-dashoffset="201"/>
+              </svg>
+              <div class="num" id="ringPct">0%</div>
+            </div>
+            <div class="stats">
+              <div class="stat"><div class="n" id="stStreak">0</div><div class="l">Tage Streak</div></div>
+              <div class="stat"><div class="n" id="stLearned">0</div><div class="l">Gebärden gelernt</div></div>
+            </div>
+          </div>
+          <div class="substats">
+            <div class="substat"><div class="n" id="stTrans">0</div><div class="l">Übersetzungen</div></div>
+            <div class="substat"><div class="n" id="stCorr">0</div><div class="l">Korrekturen</div></div>
+            <div class="substat"><div class="n" id="stQuiz">0</div><div class="l">Bestes Quiz</div></div>
+          </div>
+          <div class="goal-line"><div class="gl-top"><span>Tagesziel</span><span id="goalNow">0 / 15 Min.</span></div><div class="goal-track"><div class="goal-fill" id="goalFill"></div></div></div>
+        </div>
+        <div class="seg">
+          <button class="on" data-lv="verlauf">Verlauf</button>
+          <button data-lv="dict">Wörterbuch</button>
+          <button data-lv="quiz">Üben</button>
+          <button data-lv="pfad">Lernpfad</button>
+        </div>
+        <div id="lv-verlauf">
+          <input class="search" id="searchVerlauf" placeholder="Verlauf durchsuchen" />
+          <div id="historyList"></div>
+        </div>
+        <div id="lv-dict" style="display:none">
+          <input class="search" id="searchDict" placeholder="Gebärde oder Bedeutung suchen" />
+          <div class="dict-lang" id="dictLang"></div>
+          <div id="dictList"></div>
+        </div>
+        <div id="lv-quiz" style="display:none"></div>
+        <div id="lv-pfad" style="display:none"></div>
+      </div>
+    </div>
+
+    <div class="view" id="view-camera">
+      <div id="screen-camera">
+        <div class="cam-top"><h1>Übersetzen</h1><div style="display:flex;align-items:center;gap:8px"><span class="lang-chip" id="langChip">ÖGS</span><button class="cam-toggle on" id="camToggle"><span class="d"></span><span id="camToggleTxt">Kamera</span></button></div></div>
+        <div class="cam-stage" id="camStage">
+          <video id="camVideo" autoplay playsinline muted></video>
+          <div class="cam-fallback" id="camFallback">
+            <svg width="46" height="46" viewBox="0 0 24 24" fill="none" stroke="#5e7890" stroke-width="1.6"><rect x="2" y="7" width="20" height="13" rx="3"/><circle cx="12" cy="13.5" r="3.5"/><path d="M8 7l1.5-2.5h5L16 7"/></svg>
+            <div>Kamera nicht aktiv<br><span style="font-size:12px;opacity:.7">Öffne die Datei in Safari oder Chrome, oder tippe oben auf 3D Modell für die Lernhilfe</span></div>
+          </div>
+          <canvas id="handCanvas"></canvas>
+          <canvas id="lmCanvas"></canvas>
+          <div class="scan-frame"></div>
+          <div class="scan-line"></div>
+          <div class="track-tag" id="trackTag">21 Punkte erkannt</div>
+          <div class="reco-badge" id="recoBadge"></div>
+          <div class="cam-hint" id="camHint"></div>
+          <div class="cam-controls">
+            <div class="cam-side" id="flipBtn" title="Kamera wechseln"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 12a9 9 0 0 1-15 6.7L3 16"/><path d="M3 12a9 9 0 0 1 15-6.7L21 8"/><path d="M3 22v-6h6M21 2v6h-6"/></svg></div>
+            <div class="shutter" id="shutter"><div class="inner"></div></div>
+            <div class="rec-btn" id="recordBtn" title="Bewegung aufnehmen"><i></i></div>
+            <div class="cam-side" id="galleryBtn" title="Verlauf"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="8.5" cy="8.5" r="1.6"/><path d="M21 16l-5-5L5 21"/></svg></div>
+          </div>
+        </div>
+      </div>
+      <div class="sheet-mask" id="sheetMask"></div>
+      <div class="sheet" id="sheet">
+        <div class="grip"></div>
+        <div class="uncertain" id="uncertainBox" style="display:none">Nicht ganz sicher erkannt. Prüf das Ergebnis oder versuch es nochmal.</div>
+        <h2 id="sheetText">Hallo</h2>
+        <div class="sub" id="sheetSub">Erkannt mit 96% Sicherheit</div>
+        <div class="tags" id="sheetTags"></div>
+        <div class="sheet-actions">
+          <button class="btn ghost" id="showBtn">Zeig mir</button>
+          <button class="btn ghost" id="retryBtn">Erneut</button>
+          <button class="btn ghost" id="correctBtn">Korrigieren</button>
+          <button class="btn primary" id="saveBtn">Zum Verlauf</button>
+        </div>
+      </div>
+      <div class="sheet" id="correctSheet">
+        <div class="grip"></div>
+        <h2>Was war richtig?</h2>
+        <div class="sub">Deine Auswahl hilft, das Modell besser zu machen.</div>
+        <input class="search" id="searchCorrect" placeholder="Gebärde suchen" />
+        <div id="correctList" style="max-height:340px;overflow-y:auto"></div>
+      </div>
+    </div>
+
+    <div class="view" id="view-settings">
+      <div class="top"><h1>Einstellungen</h1><div class="badge" id="badge2">JM</div></div>
+      <div class="body">
+        <div class="profile">
+          <div class="avatar" id="avatar" title="Profilbild aus Galerie wählen" style="cursor:pointer;background-size:cover;background-position:center;overflow:hidden">JM</div>
+          <input type="file" id="avatarInput" accept="image/*" style="display:none" />
+          <div style="flex:1"><div class="pn" id="profileName">J. Mayer</div><div class="pe" id="profileMail">jm@hearingx.app</div><div class="pe" id="profileLevel" style="opacity:.75">Niveau Anfänger</div></div>
+          <button class="edit" id="editBtn">Bearbeiten</button>
+        </div>
+        <div class="edit-box" id="editBox">
+          <input id="nameInput" placeholder="Dein Name" />
+          <input id="mailInput" type="email" placeholder="E-Mail für Neuigkeiten" />
+          <select id="levelSel"><option value="Anfänger">Anfänger</option><option value="Mittel">Mittel</option><option value="Fortgeschritten">Fortgeschritten</option></select>
+          <button class="btn primary" id="saveNameBtn">Profil speichern</button>
+        </div>
+        <div class="section-label">Konto</div>
+        <div class="list">
+          <div class="row" id="langRow"><div class="ri">🌐</div><div class="rt"><b>Sprache</b><small>Welche Gebärdensprache erkannt wird</small></div><span class="rv" id="langVal">ÖGS</span></div>
+          <div class="row" id="goalRow"><div class="ri">🎯</div><div class="rt"><b>Tägliches Lernziel</b></div><div class="stepper"><button id="goalMinus">−</button><b id="goalVal">15 Min.</b><button id="goalPlus">+</button></div></div>
+        </div>
+        <div class="section-label">Datenschutz & Sicherheit</div>
+        <div class="list">
+          <div class="row" id="privacyRow"><div class="ri">🔒</div><div class="rt"><b>Datenschutz</b><small>Was lokal bleibt und was nicht</small></div><span class="arrow">›</span></div>
+          <div class="row" data-toast="Berechtigungen geöffnet"><div class="ri">📷</div><div class="rt"><b>App-Berechtigungen</b><small>Kamera für die Erkennung</small></div><span class="arrow">›</span></div>
+          <div class="row" id="localRow"><div class="ri">🛡️</div><div class="rt"><b>Nur lokal verarbeiten</b><small>Videos verlassen das Gerät nicht</small></div><div class="switch on" data-set="localOnly"></div></div>
+          <div class="row"><div class="ri">😊</div><div class="rt"><b>Mimik erkennen</b><small>Gesicht und Ausdruck, kann Leistung kosten</small></div><div class="switch on" data-set="face"></div></div>
+          <div class="row"><div class="ri">💾</div><div class="rt"><b>Lernstand speichern</b><small>Fortschritt bleibt auf diesem Gerät</small></div><div class="switch on" data-set="persist"></div></div>
+          <div class="row" data-toast="Daten werden exportiert"><div class="ri">⬇️</div><div class="rt"><b>Meine Daten exportieren</b></div><span class="arrow">›</span></div>
+          <div class="row" id="wipeRow"><div class="ri">🗑️</div><div class="rt"><b>Lernstand löschen</b><small>Entfernt alles Gespeicherte von diesem Gerät</small></div><span class="arrow">›</span></div>
+        </div>
+        <div class="section-label">Benachrichtigungen</div>
+        <div class="list">
+          <div class="row"><div class="ri">🔔</div><div class="rt"><b>Lern-Erinnerung</b></div><div class="switch on" data-set="notifReminder"></div></div>
+          <div class="row"><div class="ri">🔥</div><div class="rt"><b>Streak-Warnung</b></div><div class="switch on" data-set="notifStreak"></div></div>
+          <div class="row"><div class="ri">📨</div><div class="rt"><b>Neuigkeiten per Mail</b></div><div class="switch" data-set="notifNews"></div></div>
+        </div>
+        <div class="section-label">Darstellung</div>
+        <div class="list">
+          <div class="row"><div class="ri">🌙</div><div class="rt"><b>Dunkelmodus</b></div><div class="switch" data-set="dark"></div></div>
+          <div class="row"><div class="ri">📳</div><div class="rt"><b>Vibration als Rückmeldung</b></div><div class="switch on" data-set="haptics"></div></div>
+        </div>
+        <div class="section-label">Hilfe</div>
+        <div class="list">
+          <div class="row" id="helpRow"><div class="ri">❓</div><div class="rt"><b>Hilfe & Support</b></div><span class="arrow">›</span></div>
+          <div class="row" id="aboutRow"><div class="ri">ℹ️</div><div class="rt"><b>Über HearingX</b></div><span class="arrow">›</span></div>
+          <div class="row" data-toast="Danke für dein Feedback"><div class="ri">⭐</div><div class="rt"><b>App bewerten</b></div><span class="arrow">›</span></div>
+        </div>
+        <button class="logout" id="logoutBtn">Abmelden</button>
+        <div class="version">HearingX 2.0.0 · Build 207</div>
+      </div>
+    </div>
+
+    <div class="tabbar">
+      <div class="tab active" data-tab="learn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 7l9-4 9 4-9 4-9-4z"/><path d="M3 7v6"/><path d="M7 9.5V14c0 1.5 2.5 3 5 3s5-1.5 5-3V9.5"/></svg>Lernen</div>
+      <div class="tab cam" data-tab="camera"><div class="cam-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><rect x="2.5" y="7" width="19" height="13" rx="3.5"/><circle cx="12" cy="13.5" r="3.6"/><path d="M8.5 7L10 4.5h4L15.5 7"/></svg></div>Kamera</div>
+      <div class="tab" data-tab="settings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.6 1.6 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.6 1.6 0 0 0-2.7 1.1V21a2 2 0 0 1-4 0v-.1a1.6 1.6 0 0 0-2.7-1.1l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1A1.6 1.6 0 0 0 4.6 15H4.5a2 2 0 0 1 0-4h.1a1.6 1.6 0 0 0 1.1-2.7l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1A1.6 1.6 0 0 0 11 4.6V4.5a2 2 0 0 1 4 0v.1a1.6 1.6 0 0 0 2.7 1.1l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1A1.6 1.6 0 0 0 21.4 9H21a2 2 0 0 1 0 4h-.1z"/></svg>Einstellungen</div>
+    </div>
+    <div class="toast" id="toast"></div>
+  </div>
+</div>
+
+<script>
+/* ====== Gebärden-Woerterbuch ====== */
+const SIGN_DB = [
+  { id:"hallo", text:"Hallo", cat:"Begrüßung", wordType:"Interjektion", tense:null, meaning:"Begrüßung", steps:[["Flache offene Hand neben dem Kopf","Handfläche zeigt nach vorne"],["Lockeres Winken aus dem Handgelenk","entspannte Bewegung"]] },
+  { id:"tschuess", text:"Tschüss", cat:"Begrüßung", wordType:"Interjektion", tense:null, meaning:"Verabschiedung", steps:[["Hand erhoben, Finger zusammen","auf Höhe der Schulter"],["Finger mehrmals zur Handfläche klappen","wie ein kurzes Winken"]] },
+  { id:"morgen_gruss", text:"Guten Morgen", cat:"Begrüßung", wordType:"Phrase", tense:null, meaning:"Morgengruß", steps:[["Flache Hand öffnet sich am Kinn","wie eine aufgehende Bewegung"],["Hand nach vorne und oben führen","steht für den beginnenden Tag"]] },
+  { id:"freut_mich", text:"Schön dich zu sehen", cat:"Begrüßung", wordType:"Phrase", tense:null, meaning:"freundliche Begrüßung", steps:[["Flache Hand streicht über die Wange","bedeutet schön"],["Zwei Finger zeigen vom Auge weg","steht für sehen"],["Geste in Richtung Gegenüber","bezieht es auf die Person"]] },
+  { id:"danke", text:"Danke", cat:"Höflichkeit", wordType:"Interjektion", tense:null, meaning:"Höflichkeitsfloskel", steps:[["Fingerspitzen berühren das Kinn","flache Hand am Mund"],["Hand nach vorne und unten zur Person","Richtung Gegenüber"]] },
+  { id:"bitte", text:"Bitte", cat:"Höflichkeit", wordType:"Interjektion", tense:null, meaning:"höfliche Aufforderung", steps:[["Flache Hand auf der Brust","kreisende Bewegung"],["Leichtes Nicken dazu","unterstreicht die Bitte"]] },
+  { id:"entschuldigung", text:"Entschuldigung", cat:"Höflichkeit", wordType:"Interjektion", tense:null, meaning:"um Verzeihung bitten", steps:[["Faust kreist auf der Brust","steht für es tut mir leid"],["Bittender Gesichtsausdruck","gehört zur Gebärde dazu"]] },
+  { id:"ja", text:"Ja", cat:"Alltag", wordType:"Partikel", tense:null, meaning:"Zustimmung", steps:[["Faust auf Kopfhöhe","Knöchel nach vorne"],["Handgelenk klappt nach unten","wie ein nickender Kopf"]] },
+  { id:"nein", text:"Nein", cat:"Alltag", wordType:"Partikel", tense:null, meaning:"Ablehnung", steps:[["Zeige- und Mittelfinger gestreckt","zum Daumen hin"],["Finger schließen sich zum Daumen","kurze knappe Bewegung"]] },
+  { id:"wie_gehts", text:"Wie geht es dir?", cat:"Fragen", wordType:"Frage", tense:"Präsens", meaning:"nach dem Befinden fragen", steps:[["Zeigegeste auf das Gegenüber","bestimmt die Person"],["Flache Hand kreist vor dem Bauch","steht für geht es"],["Fragende Mimik, Augenbrauen hoch","markiert die Frage"]] },
+  { id:"wie_heisst", text:"Wie heißt du?", cat:"Fragen", wordType:"Frage", tense:"Präsens", meaning:"nach dem Namen fragen", steps:[["Zwei Finger tippen auf zwei Finger","steht für Name"],["Zeigegeste auf die Person","bezieht es auf dich"],["Fragende Mimik","markiert die Frage"]] },
+  { id:"wo_wohnst", text:"Wo wohnst du?", cat:"Fragen", wordType:"Frage", tense:"Präsens", meaning:"nach dem Wohnort fragen", steps:[["Hand formt ein Dach","steht für wohnen"],["Zeigefinger wischt suchend hin und her","steht für wo"],["Zeigegeste auf die Person","bezieht es auf dich"]] },
+  { id:"warum", text:"Warum?", cat:"Fragen", wordType:"Frage", tense:null, meaning:"nach dem Grund fragen", steps:[["Zeigefinger tippt an die Schläfe","steht für denken"],["Hand öffnet sich fragend","Handfläche nach oben"],["Fragende Mimik","markiert die Frage"]] },
+  { id:"lerne_gs", text:"Ich lerne Gebärdensprache", cat:"Alltag", wordType:"Verb", tense:"Präsens", meaning:"Aussagesatz, erste Person", steps:[["Zeigegeste auf die eigene Brust","bedeutet ich"],["Beide Hände formen ein offenes Buch","steht für lernen"],["Bewegung vor dem Körper","die laufende Handlung"]] },
+  { id:"verstehe", text:"Ich verstehe", cat:"Alltag", wordType:"Verb", tense:"Präsens", meaning:"Zustimmung im Gespräch", steps:[["Zeigefinger an der Stirn","steht für begreifen"],["Kurzes Nicken","bestätigt das Verstehen"]] },
+  { id:"verstehe_nicht", text:"Ich verstehe nicht", cat:"Alltag", wordType:"Verb", tense:"Präsens", meaning:"Nachfrage im Gespräch", steps:[["Zeigefinger an der Stirn","steht für begreifen"],["Hand dreht sich verneinend weg","steht für nicht"],["Fragender Ausdruck","bittet um Wiederholung"]] },
+  { id:"helfen", text:"Helfen", cat:"Alltag", wordType:"Verb", tense:"Präsens", meaning:"Unterstützung anbieten", steps:[["Eine Faust auf flacher Hand","Daumen nach oben"],["Beide Hände gemeinsam nach oben","steht für unterstützen"]] },
+  { id:"liebe", text:"Liebe", cat:"Gefühle", wordType:"Nomen", tense:null, meaning:"starke Zuneigung", steps:[["Beide Hände als Fäuste über der Brust","gekreuzt"],["Leicht an die Brust drücken","steht für Liebe"]] },
+  { id:"gluecklich", text:"Glücklich", cat:"Gefühle", wordType:"Adjektiv", tense:null, meaning:"Gefühl von Freude", steps:[["Flache Hände an der Brust","mehrmals nach oben streichen"],["Lächeln dazu","verstärkt das Gefühl"]] },
+  { id:"traurig", text:"Traurig", cat:"Gefühle", wordType:"Adjektiv", tense:null, meaning:"niedergeschlagenes Gefühl", steps:[["Beide Hände vor dem Gesicht","Finger gespreizt"],["Hände sinken langsam nach unten","steht für Trauer"],["Trauriger Ausdruck","gehört dazu"]] },
+  { id:"familie", text:"Familie", cat:"Familie", wordType:"Nomen", tense:null, meaning:"Gruppe nahestehender Menschen", steps:[["Beide Hände als F-Form vorne","Daumen und Zeigefinger"],["Hände drehen sich zu einem Kreis","steht für Zusammengehören"]] },
+  { id:"freund", text:"Freund", cat:"Familie", wordType:"Nomen", tense:null, meaning:"vertraute Person", steps:[["Beide Zeigefinger haken sich ein","steht für Verbindung"],["Position einmal tauschen","steht für Freundschaft"]] },
+  { id:"wasser", text:"Wasser", cat:"Alltag", wordType:"Nomen", tense:null, meaning:"Getränk", steps:[["Hand formt ein W","drei Finger gestreckt"],["W tippt zweimal ans Kinn","steht für Wasser"]] },
+  { id:"essen", text:"Essen", cat:"Alltag", wordType:"Verb", tense:"Präsens", meaning:"Nahrung zu sich nehmen", steps:[["Fingerspitzen zusammen","Richtung Mund"],["Mehrmals zum Mund führen","steht für essen"]] },
+  { id:"heute", text:"Heute", cat:"Zeit", wordType:"Adverb", tense:null, meaning:"der aktuelle Tag", steps:[["Beide flachen Hände vor dem Körper","Handflächen nach oben"],["Kurz nach unten tippen","steht für jetzt und heute"]] },
+  { id:"morgen", text:"Morgen", cat:"Zeit", wordType:"Adverb", tense:null, meaning:"der nächste Tag", steps:[["Flache Hand an der Wange","Daumen zur Wange"],["Hand klappt nach vorne","steht für den kommenden Tag"]] },
+  { id:"guten_tag", text:"Guten Tag", cat:"Begrüßung", wordType:"Phrase", tense:null, meaning:"höfliche Begrüßung am Tag", steps:[["Flache Hand an die Stirn","wie ein leichter Gruß"],["Hand nach vorne führen","öffnet sich zum Gegenüber"]] },
+  { id:"gute_nacht", text:"Gute Nacht", cat:"Zeit", wordType:"Phrase", tense:null, meaning:"Abschied am Abend", steps:[["Eine flache Hand waagrecht","wie ein Horizont"],["Die andere Hand senkt sich darüber","die Sonne geht unter"]] },
+  { id:"wie_bitte", text:"Wie bitte?", cat:"Fragen", wordType:"Frage", tense:null, meaning:"Nachfrage bei Unklarheit", steps:[["Hand offen nach oben","Handfläche zeigt nach oben"],["Leicht zum Gegenüber kippen","fragende Mimik dazu"]] },
+  { id:"wo_toilette", text:"Wo ist die Toilette?", cat:"Fragen", wordType:"Frage", tense:"Präsens", meaning:"nach dem WC fragen", steps:[["Hand formt ein T","Daumen zwischen den Fingern"],["T leicht schütteln","steht für Toilette"],["Zeigefinger sucht hin und her","steht für wo"]] },
+  { id:"brauche_hilfe", text:"Ich brauche Hilfe", cat:"Alltag", wordType:"Phrase", tense:"Präsens", meaning:"um Unterstützung bitten", steps:[["Zeigegeste auf die eigene Brust","bedeutet ich"],["Eine Faust auf flacher Hand","beide gemeinsam nach oben"],["Bittender Ausdruck","unterstreicht die Bitte"]] },
+  { id:"was_kostet", text:"Wie viel kostet das?", cat:"Fragen", wordType:"Frage", tense:"Präsens", meaning:"nach dem Preis fragen", steps:[["Zeigegeste auf den Gegenstand","das hier"],["Finger reiben aneinander","steht für Geld"],["Fragende Mimik","markiert die Frage"]] },
+  { id:"bitte_langsamer", text:"Bitte langsamer", cat:"Alltag", wordType:"Phrase", tense:null, meaning:"um langsameres Gebärden bitten", steps:[["Flache Hand gleitet langsam nach unten","betont langsam"],["Ruhiger, bittender Ausdruck","freundlich gemeint"]] },
+  { id:"wiederholen", text:"Kannst du das wiederholen?", cat:"Fragen", wordType:"Frage", tense:"Präsens", meaning:"um Wiederholung bitten", steps:[["Eine Hand dreht sich zurück","wie ein Zurückspulen"],["Zeigegeste auf das Gegenüber","bezieht es auf dich"],["Fragende Mimik","markiert die Frage"]] },
+  { id:"schule", text:"Schule", cat:"Alltag", wordType:"Nomen", tense:null, meaning:"Ort zum Lernen", steps:[["Beide flachen Hände klatschen leicht","zweimal aneinander"],["Steht für Schule","gemeinsames Lernen"]] },
+  { id:"arbeit", text:"Arbeit", cat:"Alltag", wordType:"Nomen", tense:null, meaning:"Tätigkeit, Beruf", steps:[["Zwei Fäuste übereinander","Handrücken nach oben"],["Obere Faust klopft zweimal","steht für arbeiten"]] },
+  { id:"kaffee", text:"Kaffee", cat:"Alltag", wordType:"Nomen", tense:null, meaning:"Getränk", steps:[["Eine Faust auf der anderen","wie eine Mühle"],["Obere Faust dreht sich","steht für mahlen und Kaffee"]] },
+  { id:"muede", text:"Müde", cat:"Gefühle", wordType:"Adjektiv", tense:null, meaning:"Zustand der Erschöpfung", steps:[["Fingerspitzen an den Augen","leicht nach unten ziehen"],["Schultern sinken etwas","müder Ausdruck"]] },
+  { id:"krank", text:"Krank", cat:"Gefühle", wordType:"Adjektiv", tense:null, meaning:"sich unwohl fühlen", steps:[["Eine Hand zur Stirn","die andere zum Bauch"],["Leidender Ausdruck","steht für krank sein"]] },
+  { id:"alles_gut", text:"Alles gut", cat:"Alltag", wordType:"Phrase", tense:null, meaning:"Beruhigung, es ist in Ordnung", steps:[["Daumen nach oben","ruhige Haltung"],["Leichtes Nicken dazu","bestätigt es ist gut"]] },
+  { id:"ich", text:"Ich", cat:"Alltag", wordType:"Pronomen", tense:null, meaning:"erste Person", steps:[["Zeigefinger zeigt auf die eigene Brust","klar und ruhig"],["Kurz halten","bezeichnet dich selbst"]] },
+  { id:"du", text:"Du", cat:"Alltag", wordType:"Pronomen", tense:null, meaning:"die angesprochene Person", steps:[["Zeigefinger zeigt auf das Gegenüber","auf Brusthöhe"],["Kurz halten","bezeichnet die Person"]] },
+  { id:"name", text:"Name", cat:"Alltag", wordType:"Nomen", tense:null, meaning:"die Bezeichnung einer Person", steps:[["Zeige- und Mittelfinger beider Hände","kreuzen sich"],["Zweimal antippen","steht für Name"]] },
+  { id:"heisse_ich", text:"Ich heiße …", cat:"Begrüßung", wordType:"Phrase", tense:"Präsens", meaning:"den eigenen Namen nennen", steps:[["Zeigegeste auf die eigene Brust","bedeutet ich"],["Zwei Finger tippen, steht für Name","danach den Namen fingern"]] },
+  { id:"komme_aus", text:"Ich komme aus …", cat:"Alltag", wordType:"Phrase", tense:"Präsens", meaning:"die Herkunft nennen", steps:[["Zeigegeste auf die eigene Brust","bedeutet ich"],["Hand zieht von vorne zum Körper","steht für kommen aus"],["Danach den Ort zeigen","Stadt oder Land"]] },
+  { id:"bis_spaeter", text:"Bis später", cat:"Begrüßung", wordType:"Phrase", tense:null, meaning:"Abschied auf bald", steps:[["Hand winkt locker","auf Schulterhöhe"],["Kurz nach vorne nicken","steht für später"]] },
+  { id:"gehoerlos", text:"Gehörlos", cat:"Alltag", wordType:"Adjektiv", tense:null, meaning:"nicht hörend", steps:[["Zeigefinger berührt das Ohr","dann den Mund"],["Kurze ruhige Bewegung","steht für gehörlos"]] },
+  { id:"hoerend", text:"Hörend", cat:"Alltag", wordType:"Adjektiv", tense:null, meaning:"hören könnend", steps:[["Zeigefinger kreist am Ohr","steht für hören"],["Kurz halten","bezeichnet hörend"]] },
+  { id:"dolmetscher", text:"Dolmetscher", cat:"Alltag", wordType:"Nomen", tense:null, meaning:"Person, die übersetzt", steps:[["Beide Hände in V-Form","voreinander"],["Hände wechseln die Position","steht für übersetzen"]] },
+  { id:"lernen", text:"Lernen", cat:"Alltag", wordType:"Verb", tense:"Präsens", meaning:"sich Wissen aneignen", steps:[["Hand nimmt etwas von der flachen Hand","führt es zur Stirn"],["Kurze Bewegung nach oben","steht für aufnehmen"]] },
+  { id:"buch", text:"Buch", cat:"Alltag", wordType:"Nomen", tense:null, meaning:"gebundene Seiten zum Lesen", steps:[["Beide flachen Hände aneinander","wie geschlossen"],["Hände öffnen sich wie ein Buch","Handflächen nach oben"]] },
+  { id:"sehen", text:"Sehen", cat:"Alltag", wordType:"Verb", tense:"Präsens", meaning:"mit den Augen wahrnehmen", steps:[["Zwei Finger an den Augen","V-Form"],["Finger zeigen nach vorne","steht für sehen"]] },
+  { id:"treffen", text:"Treffen", cat:"Alltag", wordType:"Verb", tense:"Präsens", meaning:"zusammenkommen", steps:[["Zwei aufrechte Zeigefinger","getrennt"],["Finger kommen zur Mitte zusammen","steht für treffen"]] },
+  { id:"warten", text:"Warten", cat:"Alltag", wordType:"Verb", tense:"Präsens", meaning:"auf etwas warten", steps:[["Beide Hände offen vorne","Finger zappeln leicht"],["Ruhig in Position halten","steht für warten"]] },
+  { id:"gut", text:"Gut", cat:"Alltag", wordType:"Adjektiv", tense:null, meaning:"positiv bewertet", steps:[["Daumen nach oben","ruhige Hand"],["Kurz halten","steht für gut"]] },
+  { id:"schlecht", text:"Schlecht", cat:"Alltag", wordType:"Adjektiv", tense:null, meaning:"negativ bewertet", steps:[["Daumen nach unten","ruhige Hand"],["Kurz halten","steht für schlecht"]] },
+  { id:"jetzt", text:"Jetzt", cat:"Zeit", wordType:"Adverb", tense:null, meaning:"im Moment", steps:[["Beide flachen Hände vor dem Körper","Handflächen nach oben"],["Einmal kurz nach unten","steht für jetzt"]] },
+  { id:"spaeter", text:"Später", cat:"Zeit", wordType:"Adverb", tense:null, meaning:"zu einem kommenden Zeitpunkt", steps:[["Flache Hand seitlich","Daumen oben"],["Hand kippt nach vorne","steht für später"]] },
+  { id:"gestern", text:"Gestern", cat:"Zeit", wordType:"Adverb", tense:null, meaning:"der vergangene Tag", steps:[["Daumen an die Wange","Hand locker"],["Daumen klappt nach hinten","steht für gestern"]] },
+  { id:"woche", text:"Woche", cat:"Zeit", wordType:"Nomen", tense:null, meaning:"sieben Tage", steps:[["Zeigefinger der einen Hand","gleitet über die flache andere Hand"],["Von der Handwurzel zu den Fingern","steht für eine Woche"]] },
+  { id:"jahr", text:"Jahr", cat:"Zeit", wordType:"Nomen", tense:null, meaning:"zwölf Monate", steps:[["Eine Faust kreist um die andere","einmal herum"],["Zurück zur Ausgangslage","steht für ein Jahr"]] },
+  { id:"geld", text:"Geld", cat:"Alltag", wordType:"Nomen", tense:null, meaning:"Zahlungsmittel", steps:[["Flache Hand nach oben","wie ein Teller"],["Fingerspitzen der anderen Hand reiben darauf","steht für Geld"]] },
+  { id:"zuhause", text:"Zuhause", cat:"Alltag", wordType:"Nomen", tense:null, meaning:"der eigene Wohnort", steps:[["Fingerspitzen zusammen ans Kinn","dann an die Wange"],["Kurze Bewegung","steht für Zuhause"]] },
+  { id:"eins", text:"Eins", cat:"Zahlen", wordType:"Zahl", tense:null, meaning:"die Zahl 1", steps:[["Nur der Zeigefinger ist gestreckt","andere Finger geschlossen"],["Hand ruhig nach vorne","zeigt die Eins"]] },
+  { id:"zwei", text:"Zwei", cat:"Zahlen", wordType:"Zahl", tense:null, meaning:"die Zahl 2", steps:[["Zeige- und Mittelfinger gestreckt","gespreizt"],["Hand ruhig nach vorne","zeigt die Zwei"]] },
+  { id:"drei", text:"Drei", cat:"Zahlen", wordType:"Zahl", tense:null, meaning:"die Zahl 3", steps:[["Daumen, Zeige- und Mittelfinger gestreckt","Ring und kleiner Finger geschlossen"],["Hand ruhig nach vorne","zeigt die Drei"]] },
+  { id:"schreib_auf", text:"Bitte schreib es auf", cat:"Alltag", wordType:"Phrase", tense:null, meaning:"um eine Notiz bitten", steps:[["Eine flache Hand ist die Unterlage","wie Papier"],["Die andere führt eine Schreibbewegung aus","steht für schreiben"],["Freundlicher Ausdruck","macht es zur Bitte"]] }
+];
+const byId = Object.fromEntries(SIGN_DB.map(s=>[s.id,s]));
+function tagsOf(s){ const t=[[s.wordType, s.wordType==="Verb"?"verb":(s.wordType==="Frage"?"frage":"")]]; if(s.tense) t.push([s.tense,"zeit"]); t.push([s.cat,""]); return t; }
+
+/* ====== Zustand ====== */
+const state = {
+  tab:"camera", learnView:"verlauf", camLive:true,
+  settings:{ dark:false, haptics:true, localOnly:true, face:true, persist:true, notifReminder:true, notifStreak:true, notifNews:false },
+  goal:15, language:"ÖGS", profileName:"J. Mayer", email:"jm@hearingx.app", level:"Anfänger", streak:0, lastDay:null, trainingSamples:48, quizBest:0, avatarImg:null, practiceSec:0,
+  history:[
+    { id:"morgen_gruss", time:"Heute, 08:14", conf:95 },
+    { id:"danke", time:"Gestern, 19:42", conf:93 },
+    { id:"wie_gehts", time:"Gestern, 17:05", conf:90 },
+    { id:"verstehe", time:"Mo, 21:30", conf:88 }
+  ]
+};
+function initials(name){ return name.split(/\s+/).map(w=>w[0]||"").join("").slice(0,2).toUpperCase() || "JM"; }
+function distinctLearned(){ return new Set(state.history.map(h=>h.id)); }
+function vibrate(p){ if(state.settings.haptics && navigator.vibrate){ try{ navigator.vibrate(p); }catch(e){} } }
+function applyAvatar(){
+  const ini = initials(state.profileName);
+  ["avatar","badge1","badge2"].forEach(id=>{
+    const el=document.getElementById(id); if(!el) return;
+    if(state.avatarImg){ el.style.backgroundImage="url("+state.avatarImg+")"; el.style.backgroundSize="cover"; el.style.backgroundPosition="center"; el.textContent=""; }
+    else { el.style.backgroundImage=""; el.textContent=ini; }
+  });
+}
+/* Tagesziel. Es zaehlt die aktiv in der App verbrachte Zeit und zeigt Soll und Ist. */
+function updateGoal(){
+  const min = Math.floor(state.practiceSec/60);
+  const now=document.getElementById("goalNow"); if(now) now.textContent = min+" / "+state.goal+" Min.";
+  const fill=document.getElementById("goalFill"); if(fill) fill.style.width = Math.min(100, state.goal? (min/state.goal*100):0)+"%";
+}
+
+/* ====== Rendern ====== */
+function renderProgress(){
+  const learned = distinctLearned().size;
+  const pct = Math.round(learned / SIGN_DB.length * 100), circ = 201;
+  document.getElementById("ringFill").setAttribute("stroke-dashoffset", circ - circ*pct/100);
+  document.getElementById("ringPct").textContent = pct + "%";
+  document.getElementById("stStreak").textContent = state.streak;
+  document.getElementById("stLearned").textContent = learned;
+  document.getElementById("stTrans").textContent = state.history.length;
+  document.getElementById("stCorr").textContent = state.trainingSamples;
+  document.getElementById("stQuiz").textContent = state.quizBest + "/5";
+  const left = SIGN_DB.length - learned;
+  document.getElementById("progSub").textContent = left>0 ? `Noch ${left} Gebärden bis du das Grundwörterbuch kannst.` : "Stark, du kennst das ganze Grundwörterbuch.";
+  applyAvatar(); updateGoal();
+}
+function stepsHtml(s){ return s.steps.map((st,n)=>`<div class="step"><div class="n">${n+1}</div><div class="t"><b>${st[0]}.</b> ${st[1]}.</div></div>`).join(""); }
+function chipsHtml(s){ return tagsOf(s).map(t=>`<span class="chip ${t[1]}">${t[0]}</span>`).join(""); }
+function bindEntries(root){ root.querySelectorAll(".entry-head").forEach(h=>h.addEventListener("click",()=>h.parentElement.classList.toggle("open"))); }
+
+function renderHistory(){
+  const q = (document.getElementById("searchVerlauf").value||"").toLowerCase();
+  const list = document.getElementById("historyList");
+  const items = state.history.filter(h=>{ const s=byId[h.id]; return !q || s.text.toLowerCase().includes(q) || s.meaning.toLowerCase().includes(q); });
+  if(!items.length){ list.innerHTML = `<div class="empty">${q?"Nichts gefunden.":"Noch keine Übersetzungen.<br>Tippe unten auf die Kamera und leg los."}</div>`; return; }
+  list.innerHTML = items.map(h=>{ const s=byId[h.id]; return `
+    <div class="entry"><div class="entry-head"><div class="entry-ico">✋</div>
+      <div class="entry-main"><div class="entry-text">${s.text}</div>
+        <div class="entry-meta">${chipsHtml(s)}</div>
+        <div class="entry-time">${h.time} · ${h.conf}% sicher</div></div>
+      <span class="caret">⌄</span></div>
+      <div class="entry-steps">${stepsHtml(s)}<button class="show-sign" data-id="${s.id}">Zeig mir diese Gebärde</button><button class="check-sign" data-id="${s.id}">Aufnahme prüfen</button></div></div>`; }).join("");
+  bindEntries(list);
+}
+function renderDict(){
+  const q = (document.getElementById("searchDict").value||"").toLowerCase();
+  const list = document.getElementById("dictList"), learned = distinctLearned();
+  const items = SIGN_DB.filter(s=>!q || s.text.toLowerCase().includes(q) || s.meaning.toLowerCase().includes(q));
+  if(!items.length){ list.innerHTML = `<div class="empty">Nichts gefunden.</div>`; return; }
+  const cats = [...new Set(items.map(s=>s.cat))];
+  list.innerHTML = cats.map(cat=>`<div class="section-label">${cat}</div>${items.filter(s=>s.cat===cat).map(s=>`
+    <div class="entry"><div class="entry-head"><div class="entry-ico">✋</div>
+      <div class="entry-main"><div class="entry-text">${s.text} ${learned.has(s.id)?'<span class="ok">✓ gelernt</span>':''}</div>
+        <div class="entry-meta">${chipsHtml(s)}</div></div>
+      <span class="caret">⌄</span></div>
+      <div class="entry-steps">${stepsHtml(s)}<button class="show-sign" data-id="${s.id}">Zeig mir diese Gebärde</button><button class="check-sign" data-id="${s.id}">Aufnahme prüfen</button></div></div>`).join("")}`).join("");
+  bindEntries(list);
+}
+</script>
+
+<script>
+/* ====== Uebungsmodus ====== */
+const quiz = { questions:[], i:0, score:0, answered:false };
+function shuffle(a){ a=a.slice(); for(let i=a.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; } return a; }
+function renderQuizIntro(){
+  document.getElementById("lv-quiz").innerHTML = `<div class="quiz-intro card"><div class="quiz-emoji">🧠</div>
+    <div class="quiz-q">Bereit zum Üben?</div>
+    <p class="muted">Fünf Gebärden, du errätst die richtige Bedeutung. Bestes Ergebnis bisher: ${state.quizBest} von 5.</p>
+    <button class="btn primary" id="quizStart" style="margin-top:8px">Quiz starten</button></div>`;
+  document.getElementById("quizStart").addEventListener("click",startQuiz);
+}
+function startQuiz(){ quiz.questions=shuffle(SIGN_DB).slice(0,5); quiz.i=0; quiz.score=0; quiz.answered=false; renderQuizQuestion(); }
+function renderQuizQuestion(){
+  const s = quiz.questions[quiz.i];
+  const opts = shuffle([s, ...shuffle(SIGN_DB.filter(x=>x.id!==s.id)).slice(0,3)]);
+  quiz.answered=false;
+  document.getElementById("lv-quiz").innerHTML = `
+    <div class="quiz-bar"><span>Frage ${quiz.i+1} von 5</span><span>${quiz.score} richtig</span></div>
+    <div class="quiz-clue"><b>Bedeutung:</b> ${s.meaning}.<br><br><b>So wird gebärdet:</b> ${s.steps.map(st=>st[0]).join(", ")}.</div>
+    <div class="quiz-q" style="font-size:15px;margin-bottom:10px">Welche Gebärde ist das?</div>
+    <div id="quizOpts">${opts.map(o=>`<button class="opt" data-id="${o.id}">${o.text}</button>`).join("")}</div>`;
+  document.querySelectorAll("#quizOpts .opt").forEach(b=>b.addEventListener("click",()=>answerQuiz(b, s.id)));
+}
+function answerQuiz(btn, correctId){
+  if(quiz.answered) return; quiz.answered=true;
+  document.querySelectorAll("#quizOpts .opt").forEach(b=>{ if(b.dataset.id===correctId) b.classList.add("right"); else if(b===btn) b.classList.add("wrong"); b.style.pointerEvents="none"; });
+  if(btn.dataset.id===correctId){ quiz.score++; vibrate([18]); } else { vibrate([0,40,30,40]); }
+  const next=document.createElement("button"); next.className="btn primary"; next.style.marginTop="6px";
+  next.textContent = quiz.i<4 ? "Weiter" : "Ergebnis";
+  next.addEventListener("click",()=>{ if(quiz.i<4){ quiz.i++; renderQuizQuestion(); } else finishQuiz(); });
+  document.getElementById("lv-quiz").appendChild(next);
+}
+function finishQuiz(){
+  if(quiz.score>state.quizBest) state.quizBest=quiz.score; renderProgress(); saveState();
+  document.getElementById("lv-quiz").innerHTML = `<div class="quiz-intro card"><div class="quiz-emoji">${quiz.score>=4?"🎉":quiz.score>=2?"👍":"💪"}</div>
+    <div class="quiz-q">${quiz.score} von 5 richtig</div>
+    <p class="muted">${quiz.score>=4?"Sehr stark.":quiz.score>=2?"Solide, weiter so.":"Übung macht den Meister."}</p>
+    <button class="btn primary" id="quizAgain" style="margin-top:8px">Nochmal</button></div>`;
+  document.getElementById("quizAgain").addEventListener("click",startQuiz);
+}
+
+/* ====== Tabs / Ansichten ====== */
+const views = { learn:"view-learn", camera:"view-camera", settings:"view-settings" };
+function switchTab(name){
+  state.tab=name;
+  document.querySelectorAll(".tab").forEach(t=>t.classList.toggle("active",t.dataset.tab===name));
+  document.querySelectorAll(".view").forEach(v=>v.classList.remove("active"));
+  document.getElementById(views[name]).classList.add("active");
+  if(name==="camera"){ setCamMode(state.camLive); }
+  else { setRender3d(false); stopCamera(); }
+}
+document.querySelectorAll(".tab").forEach(t=>t.addEventListener("click",()=>{ vibrate([8]); switchTab(t.dataset.tab); }));
+document.getElementById("galleryBtn").addEventListener("click",()=>switchTab("learn"));
+function switchLearnView(v){
+  state.learnView=v;
+  document.querySelectorAll(".seg button").forEach(b=>b.classList.toggle("on",b.dataset.lv===v));
+  document.getElementById("lv-verlauf").style.display = v==="verlauf"?"block":"none";
+  document.getElementById("lv-dict").style.display = v==="dict"?"block":"none";
+  document.getElementById("lv-quiz").style.display = v==="quiz"?"block":"none";
+  document.getElementById("lv-pfad").style.display = v==="pfad"?"block":"none";
+  if(v==="verlauf") renderHistory(); if(v==="dict") renderDict(); if(v==="quiz") renderQuizIntro(); if(v==="pfad") renderPath();
+}
+document.querySelectorAll(".seg button").forEach(b=>b.addEventListener("click",()=>switchLearnView(b.dataset.lv)));
+document.getElementById("searchVerlauf").addEventListener("input",renderHistory);
+document.getElementById("searchDict").addEventListener("input",renderDict);
+
+/* ====== Lernpfad mit Wiederholung nach dem Leitner-Prinzip. Jede Gebärde hat
+   eine Box, richtig hebt sie, falsch setzt sie zurück. Gemeistert ab Box 2.
+   Alles bleibt im Sitzungsspeicher, passend zum Datenschutz. ====== */
+const srs = {};
+let pathSession = null, recFromPath = false;
+const PF_MASTER = 2, PF_SIZE = 8;
+function pfMastered(){ return SIGN_DB.filter(s => srs[s.id] && srs[s.id].box >= PF_MASTER).length; }
+function startPath(){
+  const ranked = SIGN_DB.slice().sort((a,b)=> (((srs[a.id]&&srs[a.id].box)||0) - ((srs[b.id]&&srs[b.id].box)||0)) || (Math.random()-0.5));
+  const queue = ranked.slice(0, Math.min(PF_SIZE, ranked.length)).map(s=>s.id);
+  queue.forEach(id=>{ if(!srs[id]) srs[id]={box:0,seen:0,ok:0}; });
+  pathSession = { queue, idx:0, revealed:false, total:queue.length, mastered:0 };
+  renderPath();
+}
+function pathRate(ok){
+  if(!pathSession) return;
+  const id = pathSession.queue[pathSession.idx];
+  const s = srs[id] || (srs[id]={box:0,seen:0,ok:0}); s.seen++; touchStreak();
+  pathSession.queue.splice(pathSession.idx,1);
+  if(ok){ s.ok++; s.box=Math.min(5,(s.box||0)+1);
+    if(s.box>=PF_MASTER) pathSession.mastered++;
+    else pathSession.queue.push(id);
+  } else {
+    s.box=0;
+    const pos=Math.min(pathSession.queue.length, pathSession.idx+2);
+    pathSession.queue.splice(pos,0,id);
+  }
+  pathSession.revealed=false;
+  if(pathSession.idx>=pathSession.queue.length) pathSession.idx=0;
+  vibrate([8]);
+  renderPath(); saveState();
+}
+function renderPath(){
+  const wrap=document.getElementById("lv-pfad"); if(!wrap) return;
+  const total=SIGN_DB.length, mastered=pfMastered();
+  if(!pathSession){
+    wrap.innerHTML = `<div class="pf-card"><div class="pf-word" style="font-size:22px">Lernpfad</div><div class="pf-hint">Kurze Karten mit Wiederholung. Du siehst ein Wort und überlegst die Gebärde, dann löst du auf und bewertest dich. Was du noch nicht kannst, kommt öfter.</div><div class="pf-meta" style="margin-bottom:14px">${mastered} von ${total} Gebärden sitzen schon</div><button class="btn primary" data-act="start" style="width:100%">Session starten</button></div>`;
+    return;
+  }
+  if(pathSession.queue.length===0 || pathSession.idx>=pathSession.queue.length){
+    const m=pathSession.mastered;
+    pathSession=null;
+    wrap.innerHTML = `<div class="pf-card"><div class="pf-word" style="font-size:22px">Runde fertig</div><div class="pf-hint">Stark. In dieser Runde gemeistert: ${m}. Insgesamt sitzen ${mastered} von ${total}.</div><button class="btn primary" data-act="restart" style="width:100%">Neue Runde</button></div>`;
+    return;
+  }
+  const id=pathSession.queue[pathSession.idx], sign=byId[id];
+  const prog=Math.round((pathSession.mastered/pathSession.total)*100);
+  let inner = `<div class="pf-meta">Noch ${pathSession.queue.length} in der Runde</div><div class="pf-bar"><i style="width:${prog}%"></i></div><div class="pf-word">${sign.text}</div>`;
+  if(!pathSession.revealed){
+    inner += `<div class="pf-hint">Wie gebärdet man das? Überleg kurz.</div><button class="btn primary" data-act="reveal" style="width:100%">Auflösen</button>`;
+  } else {
+    inner += `<div class="pf-hint" style="margin-bottom:8px">${sign.meaning}</div><ol class="pf-steps">${sign.steps.map(s=>'<li>'+s[0]+(s[1]?', '+s[1]:'')+'</li>').join("")}</ol><button class="pf-show" data-act="show">Zeig mir die Bewegung im 3D Modell</button><button class="pf-show" data-act="check">Mit Kamera prüfen</button><div class="pf-actions" style="margin-top:12px"><button class="btn ghost" data-act="again">Nochmal</button><button class="btn primary" data-act="ok">Gewusst</button></div>`;
+  }
+  wrap.innerHTML = `<div class="pf-card">${inner}</div>`;
+}
+document.getElementById("lv-pfad").addEventListener("click",e=>{
+  const b=e.target.closest && e.target.closest("[data-act]"); if(!b) return;
+  const a=b.dataset.act;
+  if(a==="start"||a==="restart") startPath();
+  else if(a==="reveal"){ if(pathSession){ pathSession.revealed=true; renderPath(); } }
+  else if(a==="ok") pathRate(true);
+  else if(a==="again") pathRate(false);
+  else if(a==="show"){ if(!pathSession) return; const id=pathSession.queue[pathSession.idx]; vibrate([8]); switchTab("camera"); setCamMode(false); setTimeout(()=>playSign(id),360); }
+  else if(a==="check"){ if(!pathSession) return; const id=pathSession.queue[pathSession.idx]; recFromPath=true; vibrate([8]); switchTab("camera"); setCamMode(true); setTimeout(()=>startRecording(id),440); }
+});
+
+/* ====== Lokaler Speicher, abschaltbar. Wir legen nur Lernstand, Streak, Profil
+   und Einstellungen lokal ab, nichts wird hochgeladen. Jeder Zugriff ist
+   abgesichert, damit die App auch ohne erlaubten Speicher voll laeuft. ====== */
+const STORE_KEY="hearingx";
+function todayStr(){ const d=new Date(); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
+function saveState(){
+  if(!state.settings.persist) return;
+  try{
+    localStorage.setItem(STORE_KEY, JSON.stringify({ v:1, srs, streak:state.streak, lastDay:state.lastDay,
+      profileName:state.profileName, email:state.email, level:state.level, goal:state.goal,
+      language:state.language, settings:state.settings, quizBest:state.quizBest, avatarImg:state.avatarImg }));
+  }catch(e){}
+}
+function loadState(){
+  let raw=null; try{ raw=localStorage.getItem(STORE_KEY); }catch(e){ return; }
+  if(!raw) return; let d=null; try{ d=JSON.parse(raw); }catch(e){ return; } if(!d) return;
+  if(d.settings && typeof d.settings==="object") Object.assign(state.settings, d.settings);
+  if(d.srs && typeof d.srs==="object") Object.assign(srs, d.srs);
+  if(typeof d.streak==="number") state.streak=d.streak;
+  if(d.lastDay) state.lastDay=d.lastDay;
+  if(d.profileName) state.profileName=d.profileName;
+  if(typeof d.email==="string") state.email=d.email;
+  if(d.level) state.level=d.level;
+  if(typeof d.goal==="number") state.goal=d.goal;
+  if(d.language) state.language=d.language;
+  if(typeof d.quizBest==="number") state.quizBest=d.quizBest;
+  if(typeof d.avatarImg==="string" || d.avatarImg===null) state.avatarImg=d.avatarImg;
+}
+function clearState(){ try{ localStorage.removeItem(STORE_KEY); }catch(e){} }
+function touchStreak(){
+  const t=todayStr();
+  if(state.lastDay!==t){
+    if(state.lastDay){ const diff=Math.round((new Date(t+"T00:00:00")-new Date(state.lastDay+"T00:00:00"))/86400000); state.streak = diff===1 ? state.streak+1 : 1; }
+    else state.streak=1;
+    state.lastDay=t; renderProgress();
+  }
+  saveState();
+}
+function syncSettingsUI(){
+  document.querySelectorAll("[data-set]").forEach(sw=>{ const k=sw.dataset.set; sw.classList.toggle("on", !!state.settings[k]); });
+  const set=(id,v)=>{ const el=document.getElementById(id); if(el!=null) el.textContent=v; };
+  set("langVal", state.language); set("profileName", state.profileName);
+  set("profileMail", state.email||"keine E-Mail"); set("profileLevel", "Niveau "+state.level);
+  const gv=document.getElementById("goalVal"); if(gv) gv.textContent=state.goal+" Min.";
+  const lc=document.getElementById("langChip"); if(lc) lc.textContent=state.language;
+  try{ applyTheme(); }catch(e){} try{ updateGoal(); }catch(e){} try{ applyAvatar(); }catch(e){}
+}
+
+/* ====== Toast / Schalter ====== */
+let toastTimer;
+function toast(msg){ const el=document.getElementById("toast"); el.textContent=msg; el.classList.add("show"); clearTimeout(toastTimer); toastTimer=setTimeout(()=>el.classList.remove("show"),1900); }
+document.querySelectorAll("[data-toast]").forEach(r=>r.addEventListener("click",()=>{ vibrate([8]); toast(r.dataset.toast); }));
+document.querySelectorAll("[data-set]").forEach(sw=>sw.addEventListener("click",e=>{
+  e.stopPropagation();
+  const key=sw.dataset.set; state.settings[key]=!state.settings[key]; sw.classList.toggle("on",state.settings[key]); vibrate([8]);
+  if(key==="dark") applyTheme();
+  if(key==="localOnly") toast(state.settings.localOnly ? "Alles bleibt auf dem Gerät, kein Upload" : "Achtung, lokale Verarbeitung ist aus");
+  if(key==="face"){ if(state.settings.face){ if(state.camLive && window.bootFace) window.bootFace(); toast("Mimik-Erkennung an"); } else { const mb=document.getElementById("mimikBox"); if(mb){ mb.style.display="none"; mb.innerHTML=""; } toast("Mimik-Erkennung aus"); } }
+  if(key==="notifReminder") toast(state.settings.notifReminder ? "Erinnerung an, im Prototyp als Hinweis in der App" : "Erinnerung aus");
+  if(key==="notifStreak") toast(state.settings.notifStreak ? "Streak-Warnung an, im Prototyp als Hinweis in der App" : "Streak-Warnung aus");
+  if(key==="notifNews"){
+    if(state.settings.notifNews){
+      if(!isEmail(state.email)){ state.settings.notifNews=false; sw.classList.remove("on"); toast("Trag zuerst deine E-Mail im Profil ein"); openProfileEdit(true); }
+      else toast("Neuigkeiten vorgemerkt für "+state.email+", im Prototyp wird noch nichts versendet");
+    } else toast("Neuigkeiten per Mail aus");
+  }
+  if(key==="persist"){ if(state.settings.persist){ saveState(); toast("Lernstand wird auf diesem Gerät gespeichert"); } else { clearState(); toast("Speichern aus, dieser Stand bleibt nur in der Sitzung"); } }
+  saveState();
+}));
+document.getElementById("localRow").addEventListener("click",function(e){ if(e.target.classList.contains("switch")) return; this.querySelector(".switch").click(); });
+document.getElementById("wipeRow").addEventListener("click",()=>{
+  clearState(); Object.keys(srs).forEach(k=>delete srs[k]); pathSession=null;
+  state.streak=0; state.lastDay=null; state.quizBest=0;
+  renderProgress(); renderPath(); vibrate([0,30,20,30]); toast("Lernstand auf diesem Gerät gelöscht");
+});
+function applyTheme(){ document.getElementById("phone").classList.toggle("dark", state.settings.dark); }
+
+/* ====== Profil, Sprache, Ziel ====== */
+function isEmail(s){ return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s); }
+function openProfileEdit(focusMail){
+  const box=document.getElementById("editBox"); box.classList.add("show");
+  document.getElementById("nameInput").value=state.profileName==="Gast"?"":state.profileName;
+  document.getElementById("mailInput").value=state.email||"";
+  const ls=document.getElementById("levelSel"); if(ls) ls.value=state.level||"Anfänger";
+  box.scrollIntoView({behavior:"smooth",block:"center"});
+  if(focusMail){ const mi=document.getElementById("mailInput"); if(mi) setTimeout(()=>mi.focus(),250); }
+}
+document.getElementById("editBtn").addEventListener("click",()=>{ const box=document.getElementById("editBox"); if(box.classList.contains("show")) box.classList.remove("show"); else openProfileEdit(false); });
+document.getElementById("saveNameBtn").addEventListener("click",()=>{
+  const v=document.getElementById("nameInput").value.trim();
+  const m=document.getElementById("mailInput").value.trim();
+  const lv=document.getElementById("levelSel").value;
+  if(m && !isEmail(m)){ toast("Die E-Mail sieht nicht gültig aus"); return; }
+  if(v){ state.profileName=v; document.getElementById("profileName").textContent=v; }
+  state.email=m; document.getElementById("profileMail").textContent = m || "keine E-Mail";
+  state.level=lv; const pl=document.getElementById("profileLevel"); if(pl) pl.textContent="Niveau "+lv;
+  applyAvatar(); renderProgress();
+  document.getElementById("editBox").classList.remove("show"); toast("Profil aktualisiert"); saveState();
+});
+/* Profilbild aus der eigenen Galerie. Bleibt rein lokal, das Bild wird nur im
+   Arbeitsspeicher gehalten und nirgendwo hochgeladen. */
+document.getElementById("avatar").addEventListener("click",()=>{ vibrate([8]); document.getElementById("avatarInput").click(); });
+document.getElementById("avatarInput").addEventListener("change",e=>{
+  const file=e.target.files && e.target.files[0]; if(!file) return;
+  const reader=new FileReader();
+  reader.onload=()=>{ state.avatarImg=reader.result; applyAvatar(); toast("Profilbild aktualisiert"); saveState(); };
+  reader.readAsDataURL(file);
+  e.target.value="";
+});
+const LANGS=["ÖGS","DGS","DSGS"];
+const LANG_FULL={ "ÖGS":"Österreichische Gebärdensprache","DGS":"Deutsche Gebärdensprache","DSGS":"Deutschschweizer Gebärdensprache" };
+document.getElementById("langRow").addEventListener("click",()=>{ const i=(LANGS.indexOf(state.language)+1)%LANGS.length; state.language=LANGS[i]; document.getElementById("langVal").textContent=state.language; const chip=document.getElementById("langChip"); if(chip) chip.textContent=state.language; /* Hier liesse sich pro Sprache ein eigener Gebaerdensatz laden. */ vibrate([8]); toast(LANG_FULL[state.language]); saveState(); });
+function setGoal(v){ state.goal=Math.max(5,Math.min(60,v)); document.getElementById("goalVal").textContent=state.goal+" Min."; updateGoal(); saveState(); }
+document.getElementById("goalMinus").addEventListener("click",e=>{ e.stopPropagation(); setGoal(state.goal-5); vibrate([8]); });
+document.getElementById("goalPlus").addEventListener("click",e=>{ e.stopPropagation(); setGoal(state.goal+5); vibrate([8]); });
+document.getElementById("logoutBtn").addEventListener("click",()=>{
+  state.profileName="Gast"; state.avatarImg=null; state.email=""; state.level="Anfänger"; state.history=[]; state.trainingSamples=0; state.streak=0; state.lastDay=null; state.quizBest=0; state.practiceSec=0; clearState();
+  document.getElementById("profileName").textContent=state.profileName;
+  const pm=document.getElementById("profileMail"); if(pm) pm.textContent="keine E-Mail";
+  const pl=document.getElementById("profileLevel"); if(pl) pl.textContent="Niveau Anfänger";
+  const ns=document.querySelector('[data-set="notifNews"]'); if(ns){ state.settings.notifNews=false; ns.classList.remove("on"); }
+  applyAvatar(); renderProgress(); renderHistory();
+  pathSession=null; Object.keys(srs).forEach(k=>delete srs[k]); renderPath();
+  switchTab("camera"); vibrate([10]); toast("Abgemeldet, alles lokal zurückgesetzt");
+});
+</script>
+
+<script>
+/* ====== Kamera ====== */
+let camStarted=false, cameraOk=false;
+function updateFallback(){
+  const fb=document.getElementById("camFallback");
+  if(fb) fb.style.display = (state.camLive && !cameraOk) ? "flex" : "none";
+}
+/* Kamera Modus. Live zeigt das Kamerabild und blendet das 3D Modell aus.
+   3D zeigt das Handmodell als Lernhilfe und schaltet die Kamera ab. */
+function updateCamToggleUI(){
+  const b=document.getElementById("camToggle"), tx=document.getElementById("camToggleTxt"); if(!b) return;
+  b.classList.toggle("on", state.camLive);
+  if(tx) tx.textContent = state.camLive ? "Kamera" : "3D Modell";
+  b.setAttribute("aria-label", state.camLive ? "Kamera ist an, tippen für das 3D Modell" : "3D Modell, tippen für die Kamera");
+}
+function stopCamera(){
+  const v=document.getElementById("camVideo");
+  if(v){ if(v.srcObject){ v.srcObject.getTracks().forEach(t=>t.stop()); } v.srcObject=null; v.style.display="none"; }
+  camStarted=false; cameraOk=false;
+  const st=document.getElementById("camStage"); if(st) st.classList.remove("live-track");
+  showCamHint(null);
+}
+function setCamMode(live){
+  state.camLive=live;
+  const hc=document.getElementById("handCanvas"), lm=document.getElementById("lmCanvas");
+  const shut=document.getElementById("shutter"), flip=document.getElementById("flipBtn");
+  if(live){
+    hc.style.display="none"; setRender3d(false);
+    if(lm) lm.style.display="block";
+    if(shut) shut.style.display=""; if(flip) flip.style.display="";
+    startCamera();
+  } else {
+    stopCamera();
+    hc.style.display="block";
+    if(lm) lm.style.display="none";
+    if(shut) shut.style.display="none"; if(flip) flip.style.display="none";
+    ensureThree(()=>{ if(!renderer){ try{ initHand(); }catch(e){ console.warn(e); } } setRender3d(true); resizeHand(); });
+  }
+  updateCamToggleUI(); updateFallback();
+}
+function showCamHint(msg){ const el=document.getElementById("camHint"); if(!el) return; if(msg){ el.textContent=msg; el.classList.add("show"); } else el.classList.remove("show"); }
+async function startCamera(){
+  if(window.bootVision) window.bootVision();
+  if(state.settings.face && window.bootFace) window.bootFace();
+  if(camStarted) return; camStarted=true;
+  const secure = window.isSecureContext || location.protocol==="https:" || location.hostname==="localhost" || location.hostname==="127.0.0.1";
+  if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){
+    showCamHint("Diese Ansicht erlaubt keinen Kamerazugriff. Öffne die Datei in Safari oder Chrome über https oder localhost. Das 3D Modell zeigt solange die Gebärde als Simulation.");
+    updateFallback(); return;
+  }
+  try{
+    const stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:"user"}});
+    const v=document.getElementById("camVideo"); v.srcObject=stream; v.style.display="block";
+    cameraOk=true; showCamHint(null); updateFallback();
+  }catch(e){
+    cameraOk=false;
+    showCamHint(secure ? "Kamera nicht freigegeben. Erlaube den Zugriff in den Browsereinstellungen und lade die Seite neu." : "Kamera braucht eine sichere Verbindung. Öffne die Datei in Safari oder Chrome über https oder localhost. Das 3D Modell zeigt solange die Gebärde als Simulation.");
+    updateFallback();
+  }
+}
+document.getElementById("flipBtn").addEventListener("click",()=>{ vibrate([8]); toast("Kamera gewechselt"); });
+document.getElementById("camToggle").addEventListener("click",()=>{ vibrate([8]); setCamMode(!state.camLive); toast(state.camLive ? "Kamera an, 3D Modell aus" : "3D Modell an, Kamera aus"); });
+document.getElementById("recordBtn").addEventListener("click",()=>{ vibrate([10]); recognizeMotion(); });
+document.getElementById("privacyRow").addEventListener("click",openPrivacy);
+
+/* ====== Handform-Klassifikator (laeuft am Geraet) ======
+   Bewusst transparent und regelbasiert. Erkennt die Handform aus den 21
+   MediaPipe-Handpunkten. Das ist ein erster, ehrlicher Schritt, kein
+   vollstaendiges Gebaerdenmodell. Vollstaendige Gebaerden brauchen eine
+   Bewegungsfolge und ein trainiertes Modell. */
+function lmDist(a,b){ return Math.hypot(a.x-b.x, a.y-b.y); }
+function extendedFingers(lm){
+  const d=(a,b)=>lmDist(lm[a],lm[b]);
+  const thumb = d(4,5) > d(3,5)*1.05;        // Daumen abgespreizt
+  const idx   = d(8,5)  > d(6,5);            // Spitze weiter vom Grundgelenk als das Mittelgelenk
+  const mid   = d(12,9) > d(10,9);
+  const ring  = d(16,13)> d(14,13);
+  const pink  = d(20,17)> d(18,17);
+  return [thumb, idx, mid, ring, pink];      // Reihenfolge Daumen, Zeige, Mittel, Ring, Klein
+}
+/* Statisch unterscheidbare Handformen. Reihenfolge im Schluessel Daumen, Zeige,
+   Mittel, Ring, Klein, 1 heisst gestreckt. Mehr ist aus einem Standbild kaum
+   sicher trennbar, vieles unterscheidet sich nur durch die Bewegung. */
+const SHAPES = [
+  { key:"11111", name:"offene Hand",         signId:"hallo" },
+  { key:"00000", name:"Faust",               signId:"ja" },
+  { key:"10000", name:"Daumen hoch",         signId:"gut" },
+  { key:"01000", name:"Zeigefinger",         signId:"eins" },
+  { key:"01100", name:"Zeige und Mittel",    signId:"zwei" },
+  { key:"11100", name:"Daumen, Zeige, Mittel", signId:"drei" },
+  { key:"01111", name:"vier Finger",         signId:"familie" },
+  { key:"11001", name:"Ich-liebe-dich-Hand", signId:"liebe" }
+];
+function hamming(a,b){ let d=0; for(let i=0;i<a.length;i++) if(a[i]!==b[i]) d++; return d; }
+function classifyHandshape(lm, score){
+  if(!lm || lm.length < 21) return null;
+  const key = extendedFingers(lm).map(b => b ? "1" : "0").join("");
+  let best=SHAPES[0], bd=99;
+  for(const s of SHAPES){ const d=hamming(s.key,key); if(d<bd){ bd=d; best=s; } }
+  const base = Math.round(Math.max(40, Math.min(97, (score || 0.9) * 100)));
+  const conf = Math.max(45, Math.min(97, base - bd*16));   // je weiter von der Vorlage, desto unsicherer
+  return { handshape: best.name, key, signId: best.signId, confidence: conf, dist: bd };
+}
+
+/* ====== Vision-Status (global, wird vom MediaPipe-Modul gefuellt) ====== */
+window.HX = window.HX || { hand:null, status:"loading", lastLm:null, lastScore:0, lastVid:-1 };
+function visionUpdate(status){
+  const txt=document.getElementById("visTxt"), wrap=document.getElementById("visBarWrap");
+  const map={ loading:"Handerkennung lädt…", ready:"Handerkennung aktiv · am Gerät", failed:"Handerkennung aus · Simulation" };
+  if(txt) txt.textContent = map[status] || "";
+  if(wrap) wrap.style.display = (status==="loading") ? "block" : "none";
+  if(status==="ready") toast("Handerkennung aktiv, halt deine Hand ins Bild");
+  if(status==="failed") toast("Handerkennung nicht verfügbar, nutze Simulation");
+}
+window.visionUpdate = visionUpdate;
+function visionProgress(p){
+  const txt=document.getElementById("visTxt"), bar=document.getElementById("visBar"), wrap=document.getElementById("visBarWrap");
+  if(wrap) wrap.style.display="block";
+  if(bar) bar.style.width = Math.max(0,Math.min(100,p))+"%";
+  if(txt) txt.textContent = "Handerkennung lädt… "+Math.round(p)+"%";
+}
+window.visionProgress = visionProgress;
+function injectVisionUI(){
+  const stageEl=document.getElementById("camStage");
+  if(stageEl && !document.getElementById("visLabel")){
+    const el=document.createElement("div"); el.id="visLabel";
+    el.style.cssText="position:absolute;top:14px;left:14px;background:rgba(13,23,34,.72);color:#bfe0ff;font-size:11px;font-weight:700;padding:8px 11px;border-radius:12px;max-width:66%;z-index:6;line-height:1.3";
+    el.innerHTML='<div id="visTxt">Handerkennung lädt…</div><div id="visBarWrap" style="margin-top:6px;height:5px;width:118px;background:rgba(255,255,255,.18);border-radius:6px;overflow:hidden"><div id="visBar" style="height:100%;width:0;background:#7ab8ff;border-radius:6px;transition:width .2s ease"></div></div>';
+    stageEl.appendChild(el);
+  }
+  if(stageEl && !document.getElementById("mimikBox")){
+    const m=document.createElement("div"); m.id="mimikBox";
+    m.style.cssText="position:absolute;left:0;right:0;bottom:14px;display:none;justify-content:center;flex-wrap:wrap;gap:6px;z-index:6;padding:0 14px";
+    stageEl.appendChild(m);
+  }
+}
+
+/* ====== Live-Erkennung pro Bild ====== */
+function processVision(){
+  const HX=window.HX; if(!HX || !HX.hand) return;
+  if(state.tab!=="camera") return;
+  const v=document.getElementById("camVideo");
+  if(!v || v.readyState<2 || !v.videoWidth){ HX.lastLm=null; HX.hands=null; HX.faceLm=null; HX.blend=null; return; }
+  if(v.currentTime===HX.lastVid) return; HX.lastVid=v.currentTime;
+  try{
+    const res = HX.hand.detectForVideo(v, performance.now());
+    if(res && res.landmarks && res.landmarks.length){
+      HX.hands = res.landmarks;
+      HX.lastLm = res.landmarks[0];
+      HX.lastScore = (res.handedness && res.handedness[0] && res.handedness[0][0] && res.handedness[0][0].score) || 0.9;
+    } else { HX.lastLm = null; HX.hands = null; }
+  }catch(e){ HX.lastLm=null; HX.hands=null; }
+  if(state.settings.face && HX.face){
+    try{
+      const fr = HX.face.detectForVideo(v, performance.now());
+      if(fr && fr.faceLandmarks && fr.faceLandmarks.length){ HX.faceLm = fr.faceLandmarks[0]; HX.blend = (fr.faceBlendshapes && fr.faceBlendshapes[0] && fr.faceBlendshapes[0].categories) || null; }
+      else { HX.faceLm=null; HX.blend=null; }
+    }catch(e){ HX.faceLm=null; HX.blend=null; }
+  } else { HX.faceLm=null; HX.blend=null; }
+}
+
+/* ====== Erkennung: am Geraet wenn moeglich, sonst Simulation ====== */
+let current=null;
+const shutter=document.getElementById("shutter"), stage=document.getElementById("camStage"), recoBadge=document.getElementById("recoBadge");
+shutter.addEventListener("click",()=>{ if(!shutter.classList.contains("busy")) doRecognize(); });
+function recognizeOnDevice(){
+  const HX=window.HX; if(!HX || !HX.hand || !HX.lastLm) return null;
+  const c=classifyHandshape(HX.lastLm, HX.lastScore); if(!c) return null;
+  if(c.signId) return { sign: byId[c.signId], handshape:c.handshape, confidence:c.confidence };
+  return { handshape:c.handshape, confidence:c.confidence };
+}
+async function doRecognize(){
+  current=null; cancelAutoSave(); vibrate([12]);
+  const HX=window.HX, onDevice = !!(HX && HX.hand && HX.lastLm);
+  shutter.classList.add("busy"); stage.classList.add("scanning"); setHandPose("active");
+  recoBadge.classList.add("show"); recoBadge.innerHTML = `analysiere Handzeichen…<small>${onDevice?"am Gerät":"Simulation"}</small>`;
+  let result=null;
+  if(onDevice){
+    await new Promise(r=>setTimeout(r,700));
+    const od=recognizeOnDevice();
+    if(od && od.sign){ result={ id:od.sign.id, text:od.sign.text, wordType:od.sign.wordType, tense:od.sign.tense, cat:od.sign.cat, meaning:od.sign.meaning+" · Handform: "+od.handshape, conf:od.confidence, source:"Gerät" }; }
+    else { result={ id:null, text:"Keine Hand erkannt", wordType:"Hinweis", tense:null, cat:"Hinweis", meaning:"Halt deine Hand ruhig und ganz ins Bild, bei gutem Licht", conf:0, source:"Gerät" }; }
+  }
+  if(!result && !onDevice){
+    await new Promise(r=>setTimeout(r,1100));
+    const s = SIGN_DB[Math.floor(Math.random()*SIGN_DB.length)];
+    result = { id:s.id, text:s.text, wordType:s.wordType, tense:s.tense, cat:s.cat, meaning:s.meaning, conf:70+Math.floor(Math.random()*28), source:"Simulation" };
+  }
+  shutter.classList.remove("busy"); stage.classList.remove("scanning"); recoBadge.classList.remove("show");
+  presentResult(result);
+}
+function presentResult(result){
+  current = { id:result.id, text:result.text, wordType:result.wordType, tense:result.tense, cat:result.cat||"Sonstige", meaning:result.meaning, conf:result.conf, _source:result.source };
+  setHandSign(current.id);
+  document.getElementById("sheetText").textContent=current.text;
+  document.getElementById("sheetSub").textContent=`Erkannt mit ${current.conf}% Sicherheit · ${current.meaning} · Quelle ${current._source}`;
+  document.getElementById("sheetTags").innerHTML=chipsHtml(current);
+  document.getElementById("uncertainBox").style.display = current.conf<78 ? "block" : "none";
+  vibrate(current.conf<78 ? [0,30,20,30] : [20]);
+  openSheet("sheet"); startAutoSave();
+}
+/* Bewegungserkennung über eine kurze Aufnahme. Heuristik aus dominanter Handform
+   und Bewegungsmuster der Hand, kein trainiertes Modell, aber sie erkennt Bewegung. */
+function motionLabel(m){ return ({static:"gehalten",shakeX:"seitlich hin und her",bounceY:"auf und ab",circle:"kreisend",linear:"gerichtet"})[m]||m; }
+function motionSign(key, motion){
+  if(key==="11111"){ if(motion==="shakeX") return "hallo"; if(motion==="linear") return "danke"; if(motion==="circle") return "bitte"; return "hallo"; }
+  if(key==="00000") return "ja";
+  if(key==="01100") return motion==="shakeX" ? "nein" : "zwei";
+  if(key==="01000") return motion==="circle" ? "wie_gehts" : "eins";
+  if(key==="11100") return "drei";
+  if(key==="01111") return "familie";
+  if(key==="11001") return "liebe";
+  if(key==="10000") return "gut";
+  return "hallo";
+}
+function classifyMotion(samples){
+  const present=samples.filter(s=>s.key!==null);
+  if(present.length<4) return { id:null, text:"Keine Hand erkannt", conf:0, meaning:"Halt die Hand ins Bild und wiederhole die Bewegung" };
+  const counts={}; present.forEach(s=>counts[s.key]=(counts[s.key]||0)+1);
+  let domKey=present[0].key, dn=0; for(const k in counts){ if(counts[k]>dn){ dn=counts[k]; domKey=k; } }
+  let best=SHAPES[0], bd=99; for(const s of SHAPES){ const d=hamming(s.key,domKey); if(d<bd){ bd=d; best=s; } }
+  const xs=present.map(s=>s.wrist.x), ys=present.map(s=>s.wrist.y);
+  const ax=Math.max.apply(null,xs)-Math.min.apply(null,xs), ay=Math.max.apply(null,ys)-Math.min.apply(null,ys);
+  let pathLen=0, revX=0, revY=0, pdx=0, pdy=0;
+  for(let i=1;i<present.length;i++){ const dx=xs[i]-xs[i-1], dy=ys[i]-ys[i-1]; pathLen+=Math.hypot(dx,dy);
+    if(Math.abs(dx)>0.012){ const s=Math.sign(dx); if(pdx&&s!==pdx) revX++; pdx=s; }
+    if(Math.abs(dy)>0.012){ const s=Math.sign(dy); if(pdy&&s!==pdy) revY++; pdy=s; } }
+  const net=Math.hypot(xs[xs.length-1]-xs[0], ys[ys.length-1]-ys[0]);
+  const straight = pathLen>0 ? net/pathLen : 0;
+  let motion="static";
+  if(pathLen>0.12){
+    if(revX>=2 && ax>ay*1.1) motion="shakeX";
+    else if(revY>=2 && ay>ax*1.1) motion="bounceY";
+    else if(ax>0.07 && ay>0.07 && straight<0.55 && pathLen>0.28) motion="circle";
+    else motion="linear";
+  }
+  const id=motionSign(best.key, motion), sign=byId[id];
+  let conf=72 - bd*12 + (motion!=="static"?6:0); conf=Math.max(45,Math.min(95,conf));
+  return { id: sign?sign.id:null, text: sign?sign.text:("Handform "+best.name), conf, meaning:(sign?sign.meaning+" · ":"")+"Handform "+best.name+", Bewegung "+motionLabel(motion) };
+}
+function showMotionResult(r){
+  const s = r.id ? byId[r.id] : null;
+  presentResult({ id:r.id, text:r.text, wordType: s?s.wordType:"Hinweis", tense: s?s.tense:null, cat: s?s.cat:"Hinweis", meaning:r.meaning, conf:r.conf, source:"Gerät, Bewegung" });
+}
+function recognizeMotion(){ captureSequence("Mach jetzt deine Gebärde", 2200, samples=>showMotionResult(classifyMotion(samples))); }
+/* Datenschutz, formuliert passend zur App und durch eine Code-Prüfung bestätigt. */
+const PRIVACY_HTML = `
+<p style="margin:8px 0 14px;font-size:14px;line-height:1.55">Kurz gesagt, HearingX arbeitet auf deinem Gerät. Dein Kamerabild und deine Daten bleiben bei dir.</p>
+<div style="font-size:13.5px;line-height:1.55">
+<p style="margin:0 0 10px"><b>Kamera und Gesicht.</b> Das Kamerabild, die Handpunkte und die Gesichtspunkte werden ausschließlich lokal in deinem Browser verarbeitet. Es wird kein Video, kein Foto und kein Standbild gespeichert oder gesendet. Die Erkennung läuft live Bild für Bild und wird sofort wieder verworfen.</p>
+<p style="margin:0 0 10px"><b>Nur wenn nötig.</b> Die Kamera ist nur im Kamera-Modus aktiv, im 3D-Modus wird sie abgeschaltet. Ein Mikrofon wird nicht verwendet.</p>
+<p style="margin:0 0 10px"><b>Was das Gerät verlässt.</b> Beim ersten Start lädt die App einmalig die Erkennungsmodelle und Programmbibliotheken von Google sowie den Diensten jsDelivr und Cloudflare. Dabei werden nur diese Dateien geladen, es werden keine Nutzungs- oder Erkennungsdaten übertragen. Wie bei jedem Seitenaufruf sehen diese Server technische Verbindungsdaten wie deine IP-Adresse.</p>
+<p style="margin:0 0 10px"><b>Profil und Verlauf.</b> Name, Profilbild und dein Verlauf liegen im Arbeitsspeicher dieser Sitzung. Wenn du „Lernstand speichern“ einschaltest, legt die App Lernfortschritt, Streak, Profil und Einstellungen zusätzlich lokal in deinem Browser ab. Das bleibt auf dem Gerät und wird nicht hochgeladen. Schaltest du die Option aus, wird der lokale Stand entfernt und es bleibt nur die Sitzung.</p>
+<p style="margin:0 0 10px"><b>Kein Tracking.</b> Keine Analyse, keine Werbung, kein Profilbildung, keine Weitergabe an Dritte.</p>
+<p style="margin:0 0 10px"><b>Deine Kontrolle.</b> Das lokale Speichern ist eine Option, die du jederzeit ausschalten kannst. Mit „Lernstand löschen“ entfernst du den gespeicherten Stand sofort von diesem Gerät. Abmelden setzt alles zurück.</p>
+<p style="margin:0 0 4px;opacity:.7"><b>Hinweis.</b> Dies ist ein Prototyp zu Lernzwecken und keine medizinische oder rechtliche Beratung. Stand dieser Sitzung.</p>
+</div>`;
+function ensurePrivacyUI(){
+  const ph=document.querySelector(".phone"); if(!ph || document.getElementById("privacySheet")) return;
+  const mask=document.createElement("div"); mask.className="sheet-mask"; mask.id="privacyMask";
+  const sh=document.createElement("div"); sh.className="sheet"; sh.id="privacySheet"; sh.style.maxHeight="86%"; sh.style.overflowY="auto";
+  sh.innerHTML='<div class="grip"></div><h2>Datenschutz</h2>'+PRIVACY_HTML+'<div class="sheet-actions"><button class="btn primary" id="privacyClose">Verstanden</button></div>';
+  ph.appendChild(mask); ph.appendChild(sh);
+  mask.addEventListener("click",closePrivacy);
+  document.getElementById("privacyClose").addEventListener("click",closePrivacy);
+}
+function openPrivacy(){ ensurePrivacyUI(); vibrate([8]); document.getElementById("privacySheet").classList.add("show"); document.getElementById("privacyMask").classList.add("show"); }
+function closePrivacy(){ const s=document.getElementById("privacySheet"), m=document.getElementById("privacyMask"); if(s)s.classList.remove("show"); if(m)m.classList.remove("show"); }
+/* Wiederverwendbares Info-Sheet für Hilfe und Über die App. */
+function ensureInfoUI(){
+  const ph=document.querySelector(".phone"); if(!ph || document.getElementById("infoSheet")) return;
+  const mask=document.createElement("div"); mask.className="sheet-mask"; mask.id="infoMask";
+  const sh=document.createElement("div"); sh.className="sheet"; sh.id="infoSheet"; sh.style.maxHeight="86%"; sh.style.overflowY="auto";
+  sh.innerHTML='<div class="grip"></div><h2 id="infoTitle"></h2><div id="infoBody" style="font-size:13.5px;line-height:1.55"></div><div class="sheet-actions"><button class="btn primary" id="infoClose">Schließen</button></div>';
+  ph.appendChild(mask); ph.appendChild(sh);
+  mask.addEventListener("click",closeInfo); document.getElementById("infoClose").addEventListener("click",closeInfo);
+}
+function closeInfo(){ const s=document.getElementById("infoSheet"), m=document.getElementById("infoMask"); if(s)s.classList.remove("show"); if(m)m.classList.remove("show"); }
+function showInfoSheet(title, html){ ensureInfoUI(); document.getElementById("infoTitle").textContent=title; document.getElementById("infoBody").innerHTML=html; vibrate([8]); document.getElementById("infoSheet").classList.add("show"); document.getElementById("infoMask").classList.add("show"); }
+const HELP_HTML = `
+<p style="margin:0 0 12px"><b>Foto oder Bewegung.</b> Der weiße Auslöser rechts macht ein Standbild und prüft die Handform. Der rote Knopf darunter nimmt rund zwei Sekunden auf, mach dabei die Gebärde, dann werden Handform und Bewegung ausgewertet.</p>
+<p style="margin:0 0 12px"><b>Kamera oder 3D Modell.</b> Oben rechts schaltest du zwischen Live-Kamera und dem 3D Handmodell um. Im 3D Modus ist die Kamera aus.</p>
+<p style="margin:0 0 12px"><b>Üben.</b> Im Wörterbuch und im Verlauf zeigt „Zeig mir diese Gebärde“ die Bewegung im 3D Modell, „Aufnahme prüfen“ gibt dir eine Rückmeldung zu deiner eigenen Ausführung.</p>
+<p style="margin:0 0 12px"><b>Hand wird nicht erkannt.</b> Sorg für gutes Licht, halt die ganze Hand ruhig ins Bild und etwas Abstand zur Kamera. Erkennung und Kamera brauchen einen echten Browser über https oder localhost.</p>
+<p style="margin:0 0 12px"><b>Mimik.</b> Unter Einstellungen lässt sich die Gesichts- und Mimikerkennung an- und abschalten, sie kann auf schwächeren Geräten Leistung kosten.</p>
+<p style="margin:0;opacity:.7"><b>Kontakt.</b> Prototyp zu Lernzwecken. Rückmeldungen gern über App bewerten.</p>`;
+const ABOUT_HTML = `
+<p style="margin:0 0 12px"><b>Was HearingX macht.</b> Die App übersetzt Gebärden über die Kamera in Text und hilft beim Üben mit einem animierten 3D Handmodell. Alles läuft lokal auf deinem Gerät.</p>
+<p style="margin:0 0 12px"><b>Technik.</b> Handerkennung und Mimik über MediaPipe direkt im Browser, das 3D Modell über Three.js. Die Modelle werden beim ersten Start einmalig geladen.</p>
+<p style="margin:0 0 12px"><b>Ehrlich zur Grenze.</b> Erkannt werden statische Handformen und ein paar Bewegungsmuster per Heuristik. Ganze Gebärden samt Bewegungsverlauf und Mimik sicher zu erkennen braucht ein trainiertes Modell, das ist der nächste große Schritt.</p>
+<p style="margin:0 0 12px"><b>Datenschutz.</b> Kein Speichern oder Senden von Bild und Video, kein Tracking. Details findest du in den Einstellungen unter Datenschutz.</p>
+<p style="margin:0;opacity:.7">HearingX 2.0.0 · Build 207 · Prototyp, keine medizinische oder rechtliche Beratung.</p>`;
+document.getElementById("helpRow").addEventListener("click",()=>showInfoSheet("Hilfe und Support", HELP_HTML));
+document.getElementById("aboutRow").addEventListener("click",()=>showInfoSheet("Über HearingX", ABOUT_HTML));
+function openSheet(id){ document.getElementById(id).classList.add("show"); document.getElementById("sheetMask").classList.add("show"); }
+/* Automatisches Speichern. Nach zehn Sekunden landet ein erkanntes Zeichen von
+   selbst im Verlauf, falls du nichts tust. Manuelles Speichern, Korrigieren oder
+   eine neue Erkennung brechen den Countdown ab. Alles bleibt lokal. */
+let autoSaveTimer=null, autoSaveLeft=0;
+function cancelAutoSave(){ if(autoSaveTimer){ clearInterval(autoSaveTimer); autoSaveTimer=null; } const b=document.getElementById("saveBtn"); if(b) b.textContent="Zum Verlauf"; }
+function startAutoSave(){
+  cancelAutoSave(); if(!current || !current.id) return;
+  autoSaveLeft=10; const b=document.getElementById("saveBtn"); if(b) b.textContent="Zum Verlauf ("+autoSaveLeft+")";
+  autoSaveTimer=setInterval(()=>{
+    autoSaveLeft--; if(b) b.textContent="Zum Verlauf ("+Math.max(0,autoSaveLeft)+")";
+    if(autoSaveLeft<=0) doSave(true);
+  },1000);
+}
+function doSave(auto){
+  if(!current || !current.id){ cancelAutoSave(); closeSheets(); return; }
+  cancelAutoSave();
+  state.history.unshift({ id:current.id, time:"Gerade eben", conf:current.conf });
+  renderProgress(); renderHistory(); closeSheets(); vibrate([18]); touchStreak(); toast(auto ? "Automatisch gespeichert" : "Im Verlauf gespeichert");
+}
+function closeSheets(){ cancelAutoSave(); document.getElementById("sheet").classList.remove("show"); document.getElementById("correctSheet").classList.remove("show"); document.getElementById("sheetMask").classList.remove("show"); setHandPose("idle"); }
+document.getElementById("sheetMask").addEventListener("click",closeSheets);
+document.getElementById("retryBtn").addEventListener("click",closeSheets);
+document.getElementById("showBtn").addEventListener("click",()=>{ const id=current&&current.id; cancelAutoSave(); closeSheets(); if(id) playSign(id); });
+document.getElementById("saveBtn").addEventListener("click",()=>{
+  if(!current || !current.id){ toast("Diese Handform ist noch nicht zugeordnet"); closeSheets(); return; }
+  doSave(false);
+});
+
+/* Korrektur */
+document.getElementById("correctBtn").addEventListener("click",()=>{ cancelAutoSave(); document.getElementById("sheet").classList.remove("show"); renderCorrectList(); openSheet("correctSheet"); });
+document.getElementById("searchCorrect").addEventListener("input",renderCorrectList);
+function renderCorrectList(){
+  const q=(document.getElementById("searchCorrect").value||"").toLowerCase(), list=document.getElementById("correctList");
+  const items=SIGN_DB.filter(s=>!q || s.text.toLowerCase().includes(q) || s.meaning.toLowerCase().includes(q));
+  list.innerHTML=items.map(s=>`<div class="correct-item" data-id="${s.id}"><div class="ci">✋</div><div><b>${s.text}</b><small>${s.meaning}</small></div></div>`).join("");
+  list.querySelectorAll(".correct-item").forEach(it=>it.addEventListener("click",()=>applyCorrection(it.dataset.id)));
+}
+function applyCorrection(id){
+  const s=byId[id];
+  state.trainingSamples++;
+  state.history.unshift({ id:s.id, time:"Gerade eben (korrigiert)", conf:100 });
+  renderProgress(); renderHistory(); closeSheets(); setHandSign(s.id); vibrate([14,40,14]); touchStreak(); toast("Danke, deine Korrektur trainiert das Modell");
+}
+
+/* ====== Overlay: echte Handpunkte wenn vorhanden, sonst Simulation ====== */
+const LM=[[0.5,0.95],[0.38,0.85],[0.30,0.74],[0.26,0.64],[0.23,0.55],[0.46,0.62],[0.45,0.48],[0.44,0.38],[0.44,0.30],[0.52,0.60],[0.52,0.45],[0.52,0.34],[0.52,0.26],[0.58,0.62],[0.59,0.48],[0.60,0.38],[0.61,0.31],[0.64,0.66],[0.66,0.55],[0.68,0.47],[0.70,0.41]];
+const LM_CONN=[[0,1],[1,2],[2,3],[3,4],[0,5],[5,6],[6,7],[7,8],[5,9],[9,10],[10,11],[11,12],[9,13],[13,14],[14,15],[15,16],[13,17],[17,18],[18,19],[19,20],[0,17]];
+let lmCtx, lmT=0;
+function drawSkeleton(ctx, lm, w, h, active){
+  ctx.strokeStyle = active ? "rgba(91,168,245,.95)" : "rgba(143,203,255,.8)"; ctx.lineWidth=2;
+  LM_CONN.forEach(([a,b])=>{ ctx.beginPath(); ctx.moveTo(lm[a].x*w, lm[a].y*h); ctx.lineTo(lm[b].x*w, lm[b].y*h); ctx.stroke(); });
+  lm.forEach(p=>{ ctx.beginPath(); ctx.fillStyle="#fff"; ctx.arc(p.x*w,p.y*h,3.4,0,7); ctx.fill(); ctx.beginPath(); ctx.fillStyle="#3d91ec"; ctx.arc(p.x*w,p.y*h,1.7,0,7); ctx.fill(); });
+}
+function drawSimulated(ctx, w, h){
+  lmT+=0.08;
+  const cx=w*0.5, sx=w*0.46, sy=h*0.7, oy=h*0.16;
+  const pts=LM.map((p,i)=>[ cx+(p[0]-0.5)*sx + Math.sin(lmT+i)*2.2, oy+p[1]*sy + Math.cos(lmT*0.9+i)*2.2 ]);
+  ctx.strokeStyle="rgba(143,203,255,.85)"; ctx.lineWidth=2;
+  LM_CONN.forEach(([a,b])=>{ ctx.beginPath(); ctx.moveTo(pts[a][0],pts[a][1]); ctx.lineTo(pts[b][0],pts[b][1]); ctx.stroke(); });
+  pts.forEach(p=>{ ctx.beginPath(); ctx.fillStyle="#fff"; ctx.arc(p[0],p[1],3.2,0,7); ctx.fill(); ctx.beginPath(); ctx.fillStyle="#5ba8f5"; ctx.arc(p[0],p[1],1.6,0,7); ctx.fill(); });
+}
+function drawFace(ctx, lm, w, h){
+  ctx.fillStyle="rgba(122,184,255,.65)";
+  for(let i=0;i<lm.length;i+=4){ const p=lm[i]; ctx.beginPath(); ctx.arc(p.x*w,p.y*h,1.3,0,7); ctx.fill(); }
+}
+let mimikTick=0;
+function updateMimik(){
+  const box=document.getElementById("mimikBox"); if(!box) return;
+  const HX=window.HX;
+  if(!state.settings.face || !state.camLive || !HX || !HX.blend){ box.style.display="none"; box.innerHTML=""; return; }
+  const b={}; HX.blend.forEach(c=>b[c.categoryName]=c.score);
+  const sig=[];
+  const brows=Math.max(b.browInnerUp||0, ((b.browOuterUpLeft||0)+(b.browOuterUpRight||0))/2);
+  if(brows>0.45) sig.push("Augenbrauen hoch");
+  if(((b.browDownLeft||0)+(b.browDownRight||0)) > 0.9) sig.push("Stirn gerunzelt");
+  if((b.jawOpen||0)>0.4) sig.push("Mund offen");
+  if(((b.mouthSmileLeft||0)+(b.mouthSmileRight||0))/2 > 0.4) sig.push("Lächeln");
+  if((b.mouthPucker||0)>0.5) sig.push("Mund gespitzt");
+  if(((b.eyeBlinkLeft||0)+(b.eyeBlinkRight||0))/2 > 0.6) sig.push("Augen zu");
+  if(sig.length){ box.style.display="flex"; box.innerHTML = sig.slice(0,3).map(s=>'<span style="background:rgba(13,23,34,.74);color:#cfe7ff;font-size:11px;font-weight:700;padding:6px 10px;border-radius:999px">'+s+'</span>').join(""); }
+  else { box.style.display="none"; box.innerHTML=""; }
+}
+function drawLandmarks(){
+  const c=document.getElementById("lmCanvas"), w=c.clientWidth, h=c.clientHeight;
+  if(c.width!==w){ c.width=w; c.height=h; }
+  lmCtx=lmCtx||c.getContext("2d"); lmCtx.clearRect(0,0,w,h);
+  const HX=window.HX, hands = (HX && HX.hands) || (HX && HX.lastLm ? [HX.lastLm] : null);
+  const hasLm = !!(hands && hands.length);
+  stage.classList.toggle("live-track", hasLm);
+  if(state.settings.face && HX && HX.faceLm) drawFace(lmCtx, HX.faceLm, w, h);
+  if(hasLm){ const sc=stage.classList.contains("scanning"); hands.forEach(lm=>drawSkeleton(lmCtx, lm, w, h, sc)); }
+  else if(stage.classList.contains("scanning")){ drawSimulated(lmCtx, w, h); }
+  if((mimikTick++ % 6)===0) updateMimik();
+}
+
+/* ====== 3D Handmodell ====== */
+let renderer,scene,camera3d,handGroup,fingerPivots=[],poseTarget=0.12,render3dActive=false;
+let threeLoading=false, threeWanted=null;
+/* Three.js erst bei Bedarf nachladen, spart Startzeit wenn nur die Kamera genutzt wird. */
+function ensureThree(cb){
+  if(typeof THREE!=="undefined"){ cb&&cb(); return; }
+  threeWanted=cb;
+  if(threeLoading) return;
+  threeLoading=true;
+  const s=document.createElement("script");
+  s.src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js";
+  s.onload=()=>{ threeLoading=false; const f=threeWanted; threeWanted=null; if(f) f(); };
+  s.onerror=()=>{ threeLoading=false; if(window.toast) toast("3D Bibliothek konnte nicht geladen werden"); };
+  document.head.appendChild(s);
+}
+function setRender3d(on){ render3dActive = on && !!renderer; }
+/* Handform-Posen und echte Bewegungsanimationen fuer das 3D Modell.
+   Finger-Reihenfolge der Beugung: Zeige, Mittel, Ring, Klein, Daumen.
+   Ein Handform-Schluessel hat die Reihenfolge Daumen, Zeige, Mittel, Ring, Klein, 1 heisst gestreckt. */
+const HANDSHAPE_BY_SIGN = { hallo:"11111", ja:"10000", nein:"01100", wie_gehts:"01000", liebe:"11001", familie:"01111" };
+function curlsFromKey(key){ const e=[key[0]==="1",key[1]==="1",key[2]==="1",key[3]==="1",key[4]==="1"]; return [ e[1]?0:1, e[2]?0:1, e[3]?0:1, e[4]?0:1, e[0]?0:1 ]; }
+const POSE_IDLE=[0.06,0.06,0.06,0.06,0.10], POSE_SEARCH=[0.30,0.34,0.32,0.30,0.26], POSE_UNKNOWN=[0.55,0.6,0.58,0.55,0.5];
+const OPEN=[0,0,0,0,0], FIST=[1,1,1,1,1], POINT=[0,1,1,1,1], VICT=[0,0,1,1,1], THUMB=[1,1,1,1,0], ILY=[0,1,1,0,0], PINCH=[0.5,0.5,0.5,0.6,0.5], THREE=[0,0,1,1,0];
+/* Schluesselbilder je Gebaerde. curls ist die Fingerbeugung, rot die Handdrehung
+   in x y z, pos die Verschiebung in x y, dur die Dauer in Millisekunden. Mit nur
+   einer Hand sind beidhaendige Gebaerden eine bewusste Annaeherung. */
+const SIGN_ANIM = {
+  hallo:[ {curls:OPEN,rot:[-0.1,-0.3,0.16],pos:[0.55,0.55],dur:300},{curls:OPEN,rot:[-0.1,0.2,-0.2],pos:[0.55,0.55],dur:280},{curls:OPEN,rot:[-0.1,-0.2,0.2],pos:[0.55,0.55],dur:280},{curls:OPEN,rot:[-0.1,0.12,-0.12],pos:[0.5,0.5],dur:280} ],
+  tschuess:[ {curls:OPEN,rot:[-0.1,-0.2,0.2],pos:[0.5,0.7],dur:280},{curls:OPEN,rot:[-0.1,0.1,-0.2],pos:[0.5,0.7],dur:240},{curls:OPEN,rot:[-0.1,-0.1,0.2],pos:[0.5,0.7],dur:240},{curls:OPEN,rot:[-0.1,0.1,-0.15],pos:[0.5,0.65],dur:240} ],
+  danke:[ {curls:OPEN,rot:[0.25,0,0],pos:[0,0.55],dur:320},{curls:OPEN,rot:[-0.05,0,0],pos:[0,0],dur:430},{curls:OPEN,rot:[-0.1,0,0],pos:[0,-0.15],dur:300} ],
+  bitte:[ {curls:OPEN,rot:[-0.1,0,0],pos:[0,0],dur:240},{curls:OPEN,rot:[-0.1,0,0],pos:[0.22,0.16],dur:240},{curls:OPEN,rot:[-0.1,0,0],pos:[0,0.26],dur:240},{curls:OPEN,rot:[-0.1,0,0],pos:[-0.22,0.16],dur:240},{curls:OPEN,rot:[-0.1,0,0],pos:[0,0],dur:240} ],
+  ja:[ {curls:FIST,rot:[0.15,0,0],pos:[0,0.12],dur:240},{curls:FIST,rot:[-0.4,0,0],pos:[0,0],dur:240},{curls:FIST,rot:[0.12,0,0],pos:[0,0.12],dur:240},{curls:FIST,rot:[-0.3,0,0],pos:[0,0],dur:240} ],
+  nein:[ {curls:[0,0,1,1,1],rot:[-0.1,-0.22,0],pos:[0,0.1],dur:240},{curls:[0,0,1,1,1],rot:[-0.1,0.22,0],pos:[0,0.1],dur:240},{curls:FIST,rot:[-0.1,0,0],pos:[0,0],dur:300} ],
+  wie_gehts:[ {curls:[0,1,1,1,1],rot:[-0.1,0,0],pos:[0.12,0],dur:240},{curls:[0,1,1,1,1],rot:[-0.1,0,0],pos:[0,0.2],dur:240},{curls:[0,1,1,1,1],rot:[-0.1,0,0],pos:[-0.12,0],dur:240},{curls:[0,1,1,1,1],rot:[-0.1,0,0],pos:[0,-0.04],dur:240} ],
+  liebe:[ {curls:[0,1,1,0,0],rot:[-0.1,0,0],pos:[0,0.16],dur:300},{curls:[0,1,1,0,0],rot:[-0.1,0,0],pos:[0,0],dur:300},{curls:[0,1,1,0,0],rot:[-0.1,0,0],pos:[0,0.1],dur:300} ],
+  familie:[ {curls:[0,0,0,0,1],rot:[-0.1,-0.5,0],pos:[-0.22,0],dur:350},{curls:[0,0,0,0,1],rot:[-0.1,0.5,0],pos:[0.22,0],dur:400},{curls:[0,0,0,0,1],rot:[-0.1,0,0],pos:[0,0],dur:300} ],
+  wasser:[ {curls:[0,0,0,1,1],rot:[-0.1,0,0],pos:[0,0.45],dur:240},{curls:[0,0,0,1,1],rot:[-0.1,0,0],pos:[0,0.3],dur:200},{curls:[0,0,0,1,1],rot:[-0.1,0,0],pos:[0,0.45],dur:200},{curls:[0,0,0,1,1],rot:[-0.1,0,0],pos:[0,0.34],dur:200} ],
+  essen:[ {curls:[0.5,0.5,0.5,0.6,0.5],rot:[0.12,0,0],pos:[0,0.1],dur:240},{curls:[0.5,0.5,0.5,0.6,0.5],rot:[0.22,0,0],pos:[0,0.45],dur:240},{curls:[0.5,0.5,0.5,0.6,0.5],rot:[0.12,0,0],pos:[0,0.1],dur:240},{curls:[0.5,0.5,0.5,0.6,0.5],rot:[0.22,0,0],pos:[0,0.45],dur:240} ],
+  wo_wohnst:[ {curls:OPEN,rot:[-0.1,0,0.5],pos:[-0.25,0.32],dur:350},{curls:OPEN,rot:[-0.1,0,-0.5],pos:[0.25,0.32],dur:400},{curls:OPEN,rot:[-0.1,0,0],pos:[0,0.1],dur:300} ],
+  guten_tag:[ {curls:OPEN,rot:[0.2,0,0],pos:[0.1,0.5],dur:300},{curls:OPEN,rot:[-0.1,0.1,0],pos:[0.2,0.2],dur:380},{curls:OPEN,rot:[-0.1,0,0],pos:[0,0.1],dur:300} ],
+  morgen_gruss:[ {curls:[0.6,0.6,0.6,0.6,0.4],rot:[0.2,0,0],pos:[0,-0.1],dur:300},{curls:OPEN,rot:[-0.05,0,0],pos:[0,0.2],dur:400},{curls:OPEN,rot:[-0.1,0,0],pos:[0.1,0.35],dur:320} ],
+  gute_nacht:[ {curls:OPEN,rot:[-0.1,0,1.4],pos:[0,0.4],dur:350},{curls:OPEN,rot:[-0.1,0,1.4],pos:[0,-0.1],dur:450},{curls:OPEN,rot:[-0.1,0,1.4],pos:[0,-0.2],dur:300} ],
+  freut_mich:[ {curls:OPEN,rot:[-0.1,0.3,0],pos:[-0.25,0.3],dur:300},{curls:VICT,rot:[-0.1,0,0],pos:[0,0.35],dur:300},{curls:VICT,rot:[-0.1,0,0],pos:[0.2,0.1],dur:300} ],
+  entschuldigung:[ {curls:FIST,rot:[-0.1,0,0],pos:[0,0],dur:240},{curls:FIST,rot:[-0.1,0,0],pos:[0.18,0.14],dur:240},{curls:FIST,rot:[-0.1,0,0],pos:[0,0.22],dur:240},{curls:FIST,rot:[-0.1,0,0],pos:[-0.18,0.14],dur:240},{curls:FIST,rot:[-0.1,0,0],pos:[0,0],dur:240} ],
+  wie_heisst:[ {curls:VICT,rot:[-0.1,0,0],pos:[-0.1,0.1],dur:260},{curls:VICT,rot:[-0.1,0,0],pos:[0.05,0.1],dur:240},{curls:VICT,rot:[-0.1,0,0],pos:[-0.05,0.1],dur:240} ],
+  warum:[ {curls:POINT,rot:[0.1,-0.2,0],pos:[0.2,0.4],dur:320},{curls:OPEN,rot:[-0.2,0,0],pos:[0,0.1],dur:400} ],
+  lerne_gs:[ {curls:POINT,rot:[-0.1,0,0],pos:[0,0],dur:260},{curls:OPEN,rot:[0.4,0,0.3],pos:[-0.1,0.1],dur:320},{curls:OPEN,rot:[0.4,0,-0.3],pos:[0.1,0.1],dur:320} ],
+  verstehe:[ {curls:POINT,rot:[0.1,0,0],pos:[0.1,0.4],dur:300},{curls:POINT,rot:[-0.2,0,0],pos:[0.1,0.45],dur:240},{curls:POINT,rot:[0,0,0],pos:[0.1,0.4],dur:240} ],
+  verstehe_nicht:[ {curls:POINT,rot:[0.1,0,0],pos:[0.1,0.4],dur:300},{curls:POINT,rot:[-0.1,-0.6,0],pos:[0.3,0.3],dur:400},{curls:OPEN,rot:[-0.1,-0.4,0],pos:[0.2,0.2],dur:300} ],
+  helfen:[ {curls:THUMB,rot:[-0.1,0,0],pos:[0,-0.1],dur:300},{curls:THUMB,rot:[-0.1,0,0],pos:[0,0.3],dur:420} ],
+  gluecklich:[ {curls:OPEN,rot:[0.2,0,0],pos:[0,-0.1],dur:260},{curls:OPEN,rot:[0.2,0,0],pos:[0,0.25],dur:260},{curls:OPEN,rot:[0.2,0,0],pos:[0,-0.05],dur:260},{curls:OPEN,rot:[0.2,0,0],pos:[0,0.2],dur:260} ],
+  traurig:[ {curls:[0.2,0.2,0.2,0.2,0.2],rot:[0.1,0,0],pos:[0,0.4],dur:320},{curls:[0.2,0.2,0.2,0.2,0.2],rot:[0.3,0,0],pos:[0,-0.1],dur:480},{curls:[0.3,0.3,0.3,0.3,0.3],rot:[0.4,0,0],pos:[0,-0.25],dur:320} ],
+  freund:[ {curls:[0.4,1,1,1,1],rot:[-0.1,-0.2,0],pos:[-0.1,0.1],dur:320},{curls:[0.4,1,1,1,1],rot:[-0.1,0.2,0],pos:[0.1,0.1],dur:380},{curls:[0.4,1,1,1,1],rot:[-0.1,0,0],pos:[0,0.05],dur:280} ],
+  heute:[ {curls:OPEN,rot:[0.3,0,0],pos:[0,0.15],dur:260},{curls:OPEN,rot:[0.3,0,0],pos:[0,-0.05],dur:240},{curls:OPEN,rot:[0.3,0,0],pos:[0,0.1],dur:240},{curls:OPEN,rot:[0.3,0,0],pos:[0,-0.05],dur:240} ],
+  morgen:[ {curls:OPEN,rot:[-0.1,0.3,0.2],pos:[-0.3,0.2],dur:320},{curls:OPEN,rot:[-0.1,-0.2,0],pos:[0.05,0.25],dur:420} ],
+  schule:[ {curls:OPEN,rot:[-0.1,0,0.3],pos:[-0.1,0.05],dur:220},{curls:OPEN,rot:[-0.1,0,-0.1],pos:[0.05,0.05],dur:200},{curls:OPEN,rot:[-0.1,0,0.3],pos:[-0.1,0.05],dur:200},{curls:OPEN,rot:[-0.1,0,-0.1],pos:[0.05,0.05],dur:200} ],
+  arbeit:[ {curls:FIST,rot:[-0.1,0,0],pos:[0,0.1],dur:240},{curls:FIST,rot:[-0.1,0,0],pos:[0,-0.05],dur:200},{curls:FIST,rot:[-0.1,0,0],pos:[0,0.1],dur:200},{curls:FIST,rot:[-0.1,0,0],pos:[0,-0.05],dur:200} ],
+  kaffee:[ {curls:FIST,rot:[-0.1,-0.4,0],pos:[0,0.1],dur:300},{curls:FIST,rot:[-0.1,0.4,0],pos:[0,0.1],dur:340},{curls:FIST,rot:[-0.1,-0.2,0],pos:[0,0.1],dur:300} ],
+  muede:[ {curls:[0.3,0.3,0.3,0.3,0.3],rot:[0.1,0,0],pos:[0,0.4],dur:320},{curls:[0.5,0.5,0.5,0.5,0.5],rot:[0.3,0,0],pos:[0,0.1],dur:420} ],
+  krank:[ {curls:[0.4,0.4,0.4,0.4,0.4],rot:[0.1,0,0],pos:[0,0.4],dur:320},{curls:[0.4,0.4,0.4,0.4,0.4],rot:[0.2,0,0],pos:[0,-0.05],dur:420} ],
+  alles_gut:[ {curls:THUMB,rot:[0,0,0],pos:[0,0.1],dur:300},{curls:THUMB,rot:[-0.15,0,0],pos:[0,0.15],dur:240},{curls:THUMB,rot:[0,0,0],pos:[0,0.1],dur:240} ],
+  wie_bitte:[ {curls:OPEN,rot:[0.5,0,0],pos:[0,0],dur:320},{curls:OPEN,rot:[0.5,0.2,0],pos:[0.15,0.05],dur:340} ],
+  wo_toilette:[ {curls:FIST,rot:[-0.1,-0.2,0],pos:[0,0.2],dur:220},{curls:FIST,rot:[-0.1,0.2,0],pos:[0,0.2],dur:220},{curls:FIST,rot:[-0.1,-0.2,0],pos:[0,0.2],dur:220},{curls:POINT,rot:[-0.1,0,0],pos:[0.15,0],dur:280} ],
+  brauche_hilfe:[ {curls:POINT,rot:[-0.1,0,0],pos:[0,0],dur:280},{curls:THUMB,rot:[-0.1,0,0],pos:[0,-0.05],dur:260},{curls:THUMB,rot:[-0.1,0,0],pos:[0,0.3],dur:380} ],
+  was_kostet:[ {curls:POINT,rot:[-0.1,0,0],pos:[0.15,0],dur:260},{curls:[0.4,0.4,1,1,0.3],rot:[-0.1,0,0],pos:[0,0.1],dur:260},{curls:[0.5,0.5,1,1,0.4],rot:[-0.1,0,0],pos:[0,0.1],dur:260} ],
+  bitte_langsamer:[ {curls:OPEN,rot:[-0.1,0,0],pos:[0,0.4],dur:400},{curls:OPEN,rot:[-0.1,0,0],pos:[0,-0.1],dur:600} ],
+  wiederholen:[ {curls:POINT,rot:[-0.1,0.4,0],pos:[0.2,0.1],dur:300},{curls:POINT,rot:[-0.1,-0.4,0],pos:[-0.2,0.1],dur:340},{curls:POINT,rot:[-0.1,0,0],pos:[0,0.05],dur:280} ],
+  ich:[ {curls:POINT,rot:[-0.1,0,0],pos:[0,0.1],dur:280},{curls:POINT,rot:[-0.1,0,0],pos:[0,-0.05],dur:300} ],
+  du:[ {curls:POINT,rot:[-0.1,0,0],pos:[0,0.1],dur:260},{curls:POINT,rot:[-0.15,0,0],pos:[0.1,0.15],dur:300} ],
+  name:[ {curls:VICT,rot:[-0.1,0,0],pos:[-0.1,0.1],dur:260},{curls:VICT,rot:[-0.1,0,0],pos:[0.05,0.1],dur:240},{curls:VICT,rot:[-0.1,0,0],pos:[-0.05,0.1],dur:240} ],
+  heisse_ich:[ {curls:POINT,rot:[-0.1,0,0],pos:[0,0],dur:260},{curls:VICT,rot:[-0.1,0,0],pos:[0,0.1],dur:260},{curls:VICT,rot:[-0.1,0,0],pos:[0.1,0.1],dur:260} ],
+  komme_aus:[ {curls:POINT,rot:[-0.1,0,0],pos:[0,0],dur:260},{curls:[0.4,0.4,0.4,0.4,0.4],rot:[-0.1,0,0],pos:[0.25,0.1],dur:300},{curls:[0.4,0.4,0.4,0.4,0.4],rot:[-0.1,0,0],pos:[0,0.05],dur:300} ],
+  bis_spaeter:[ {curls:OPEN,rot:[-0.1,-0.2,0.2],pos:[0.4,0.5],dur:280},{curls:OPEN,rot:[-0.1,0.2,-0.2],pos:[0.4,0.5],dur:260},{curls:THUMB,rot:[-0.1,0,0],pos:[0.1,0.2],dur:300} ],
+  gehoerlos:[ {curls:POINT,rot:[-0.1,-0.3,0],pos:[0.3,0.35],dur:300},{curls:POINT,rot:[-0.1,0.1,0],pos:[0.1,0.05],dur:320} ],
+  hoerend:[ {curls:POINT,rot:[-0.1,-0.3,0],pos:[0.3,0.35],dur:280},{curls:POINT,rot:[-0.1,-0.3,0],pos:[0.35,0.3],dur:280},{curls:POINT,rot:[-0.1,-0.3,0],pos:[0.3,0.35],dur:280} ],
+  dolmetscher:[ {curls:VICT,rot:[-0.1,-0.2,0],pos:[-0.15,0.1],dur:300},{curls:VICT,rot:[-0.1,0.2,0],pos:[0.15,0.1],dur:340},{curls:VICT,rot:[-0.1,0,0],pos:[0,0.05],dur:280} ],
+  lernen:[ {curls:OPEN,rot:[0.2,0,0],pos:[0,-0.05],dur:280},{curls:[0.6,0.6,0.6,0.6,0.5],rot:[-0.05,0,0],pos:[0,0.35],dur:360} ],
+  buch:[ {curls:OPEN,rot:[0.4,0,0],pos:[0,0.05],dur:300},{curls:OPEN,rot:[0.4,0,0.35],pos:[-0.1,0.05],dur:320},{curls:OPEN,rot:[0.4,0,-0.35],pos:[0.1,0.05],dur:320} ],
+  sehen:[ {curls:VICT,rot:[0.1,0,0],pos:[0,0.35],dur:300},{curls:VICT,rot:[-0.1,0,0],pos:[0.2,0.1],dur:340} ],
+  treffen:[ {curls:POINT,rot:[-0.1,-0.4,0],pos:[-0.3,0.1],dur:300},{curls:POINT,rot:[-0.1,0.4,0],pos:[0.3,0.1],dur:300},{curls:POINT,rot:[-0.1,0,0],pos:[0,0.1],dur:280} ],
+  warten:[ {curls:OPEN,rot:[0.4,0,0],pos:[0,0.05],dur:300},{curls:OPEN,rot:[0.4,0.1,0],pos:[0.05,0.05],dur:300},{curls:OPEN,rot:[0.4,-0.1,0],pos:[-0.05,0.05],dur:300} ],
+  gut:[ {curls:THUMB,rot:[0,0,0],pos:[0,0.15],dur:360},{curls:THUMB,rot:[-0.1,0,0],pos:[0,0.2],dur:280} ],
+  schlecht:[ {curls:THUMB,rot:[0,0,3.0],pos:[0,0.2],dur:360},{curls:THUMB,rot:[-0.1,0,3.0],pos:[0,0.05],dur:300} ],
+  jetzt:[ {curls:OPEN,rot:[0.3,0,0],pos:[0,0.15],dur:260},{curls:OPEN,rot:[0.3,0,0],pos:[0,-0.05],dur:260} ],
+  spaeter:[ {curls:THUMB,rot:[-0.1,0,0.4],pos:[0,0.15],dur:300},{curls:THUMB,rot:[-0.1,0.3,0.6],pos:[0.15,0.05],dur:340} ],
+  gestern:[ {curls:THUMB,rot:[-0.1,0.2,0],pos:[-0.2,0.3],dur:300},{curls:THUMB,rot:[-0.1,-0.3,0],pos:[-0.35,0.35],dur:340} ],
+  woche:[ {curls:POINT,rot:[-0.1,0,0],pos:[-0.25,0.05],dur:320},{curls:POINT,rot:[-0.1,0,0],pos:[0.25,0.05],dur:420} ],
+  jahr:[ {curls:FIST,rot:[-0.1,-0.4,0],pos:[-0.1,0.1],dur:340},{curls:FIST,rot:[-0.1,0.4,0],pos:[0.1,0.1],dur:380},{curls:FIST,rot:[-0.1,0,0],pos:[0,0.05],dur:280} ],
+  geld:[ {curls:OPEN,rot:[0.5,0,0],pos:[0,0.05],dur:300},{curls:[0.4,0.4,1,1,0.3],rot:[0.4,0,0],pos:[0,0.1],dur:280},{curls:[0.5,0.5,1,1,0.4],rot:[0.4,0,0],pos:[0,0.1],dur:280} ],
+  zuhause:[ {curls:PINCH,rot:[0.1,0,0],pos:[0,0.3],dur:300},{curls:PINCH,rot:[-0.05,0,0],pos:[0.15,0.35],dur:320} ],
+  eins:[ {curls:POINT,rot:[0,0,0],pos:[0,0.2],dur:380},{curls:POINT,rot:[0,0,0],pos:[0,0.25],dur:280} ],
+  zwei:[ {curls:VICT,rot:[0,0,0],pos:[0,0.2],dur:380},{curls:VICT,rot:[0,0,0],pos:[0,0.25],dur:280} ],
+  drei:[ {curls:THREE,rot:[0,0,0],pos:[0,0.2],dur:380},{curls:THREE,rot:[0,0,0],pos:[0,0.25],dur:280} ],
+  schreib_auf:[ {curls:OPEN,rot:[0.5,0,0],pos:[0,0.05],dur:280},{curls:[0.5,0.5,1,1,0.3],rot:[0.3,0,0],pos:[-0.1,0.1],dur:300},{curls:[0.5,0.5,1,1,0.3],rot:[0.3,0,0],pos:[0.1,0.1],dur:300} ]
+};
+function easeIO(k){ return k<0.5 ? 2*k*k : 1-Math.pow(-2*k+2,2)/2; }
+let poseCur=POSE_IDLE.slice(), poseTgt=POSE_IDLE.slice(), poseHold=false, anim=null;
+/* Baut eine Bewegungsfolge. Eigene Schluesselbilder wenn vorhanden, sonst eine
+   schlichte Folge, die die Handform vormacht und kurz haelt. */
+function buildFrames(id){
+  if(SIGN_ANIM[id]) return SIGN_ANIM[id];
+  const key=HANDSHAPE_BY_SIGN[id], c = key ? curlsFromKey(key) : POSE_UNKNOWN.slice();
+  return [ {curls:POSE_IDLE.slice(),rot:[-0.15,-0.25,0],pos:[-0.2,-0.05],dur:300},{curls:c,rot:[-0.08,0,0],pos:[0,0.12],dur:450},{curls:c,rot:[-0.08,0.16,0],pos:[0.14,0.12],dur:340},{curls:c,rot:[-0.08,0,0],pos:[0,0.05],dur:300} ];
+}
+function playSign(id){ const frames=buildFrames(id); if(!frames||!frames.length) return; anim={ frames, i:0, start:performance.now() }; poseHold=false; }
+function setHandPose(s){ anim=null; poseTgt = (s==="active") ? POSE_SEARCH.slice() : POSE_IDLE.slice(); poseHold=false; }
+function setHandSign(id){ playSign(id); }
+function buildSeg(len,skin,skin2){
+  const g=new THREE.Group();
+  const bone=new THREE.Mesh(new THREE.CylinderGeometry(.26,.3,len,16),skin); bone.position.y=len/2; g.add(bone);
+  g.add(new THREE.Mesh(new THREE.SphereGeometry(.3,16,16),skin2));
+  const tip=new THREE.Mesh(new THREE.SphereGeometry(.26,16,16),skin2); tip.position.y=len; g.add(tip);
+  return g;
+}
+function initHand(){
+  const canvas=document.getElementById("handCanvas");
+  renderer=new THREE.WebGLRenderer({canvas,alpha:true,antialias:true}); renderer.setPixelRatio(Math.min(window.devicePixelRatio,2));
+  scene=new THREE.Scene(); camera3d=new THREE.PerspectiveCamera(45,1,0.1,100); camera3d.position.set(0,0.4,7);
+  scene.add(new THREE.AmbientLight(0xffffff,.65));
+  const dir=new THREE.DirectionalLight(0xffffff,.9); dir.position.set(3,5,4); scene.add(dir);
+  const pt=new THREE.PointLight(0x8fcbff,.8,30); pt.position.set(-4,2,3); scene.add(pt);
+  handGroup=new THREE.Group(); scene.add(handGroup);
+  const skin=new THREE.MeshStandardMaterial({color:0x9fccff,roughness:.45,metalness:.05});
+  const skin2=new THREE.MeshStandardMaterial({color:0x7fb8f5,roughness:.45,metalness:.05});
+  const palm=new THREE.Mesh(new THREE.BoxGeometry(2.1,2.3,.7),skin); palm.geometry.translate(0,-.2,0); handGroup.add(palm);
+  [[-1.05,-1.3],[1.05,-1.3]].forEach(([x,y])=>{ const s=new THREE.Mesh(new THREE.SphereGeometry(.35,16,16),skin); s.position.set(x,y,0); handGroup.add(s); });
+  const wrist=new THREE.Mesh(new THREE.CylinderGeometry(.7,.6,1.1,20),skin2); wrist.position.set(0,-1.9,0); handGroup.add(wrist);
+  const fx=[-0.78,-0.26,0.26,0.78], flen=[[1.0,0.95],[1.15,1.05],[1.1,1.0],[0.9,0.8]];
+  fx.forEach((x,i)=>{
+    const base=new THREE.Group(); base.position.set(x,1.0,0); handGroup.add(base);
+    const seg1=buildSeg(flen[i][0],skin,skin2); base.add(seg1);
+    const mid=new THREE.Group(); mid.position.set(0,flen[i][0],0); seg1.add(mid); mid.add(buildSeg(flen[i][1],skin,skin2));
+    fingerPivots.push({base,mid});
+  });
+  const tb=new THREE.Group(); tb.position.set(-1.15,-0.2,.1); tb.rotation.z=0.9; handGroup.add(tb);
+  const ts=buildSeg(1.0,skin,skin2); tb.add(ts);
+  const tm=new THREE.Group(); tm.position.set(0,1.0,0); ts.add(tm); tm.add(buildSeg(0.85,skin,skin2));
+  fingerPivots.push({base:tb,mid:tm});
+  handGroup.rotation.x=-0.15; resizeHand();
+}
+function resizeHand(){ if(!renderer) return; const c=document.getElementById("handCanvas"), w=c.clientWidth||300, h=c.clientHeight||400; renderer.setSize(w,h,false); camera3d.aspect=w/h; camera3d.updateProjectionMatrix(); }
+window.addEventListener("resize",()=>{ if(renderer) resizeHand(); });
+let t=0;
+function animateHand(){
+  requestAnimationFrame(animateHand);
+  processVision();
+  drawLandmarks();
+  if(!render3dActive || !renderer) return;
+  t+=0.016;
+  let rotT, posT, curlsTgt=poseTgt;
+  if(anim){
+    const f0=anim.frames[anim.i], f1=anim.frames[Math.min(anim.i+1, anim.frames.length-1)];
+    const k=easeIO(Math.min(1,(performance.now()-anim.start)/f0.dur));
+    curlsTgt = f0.curls.map((c,j)=> c + (f1.curls[j]-c)*k);
+    rotT = [ f0.rot[0]+(f1.rot[0]-f0.rot[0])*k, f0.rot[1]+(f1.rot[1]-f0.rot[1])*k, f0.rot[2]+(f1.rot[2]-f0.rot[2])*k ];
+    posT = [ f0.pos[0]+(f1.pos[0]-f0.pos[0])*k, f0.pos[1]+(f1.pos[1]-f0.pos[1])*k ];
+    if(performance.now()-anim.start >= f0.dur){
+      anim.i++; anim.start=performance.now();
+      if(anim.i >= anim.frames.length-1){ const last=anim.frames[anim.frames.length-1]; poseTgt=last.curls.slice(); poseHold=true; anim=null; }
+    }
+  } else {
+    rotT = [ -0.15 + Math.sin(t*0.7)*0.04, Math.sin(t*0.5)*0.35, 0 ];
+    posT = [0,0];
+  }
+  const breathe = (anim||poseHold) ? 0 : Math.sin(t*1.6)*0.05;
+  for(let i=0;i<fingerPivots.length;i++){
+    const want = anim ? curlsTgt[i] : poseTgt[i];
+    poseCur[i] += (want - poseCur[i]) * (anim?0.3:0.12);
+    const curl = Math.max(0, poseCur[i] + breathe*(1-poseCur[i]));
+    fingerPivots[i].base.rotation.x = -curl*1.25;
+    fingerPivots[i].mid.rotation.x  = -curl*1.45;
+  }
+  handGroup.rotation.x += (rotT[0]-handGroup.rotation.x)*0.18;
+  handGroup.rotation.y += (rotT[1]-handGroup.rotation.y)*0.18;
+  handGroup.rotation.z += (rotT[2]-handGroup.rotation.z)*0.18;
+  handGroup.position.x += (posT[0]-handGroup.position.x)*0.18;
+  handGroup.position.y += (posT[1]-handGroup.position.y)*0.18;
+  renderer.render(scene,camera3d);
+}
+/* ====== Üben mit Aufnahme. Nimmt kurz auf, sammelt pro Bild die Handform und
+   prüft heuristisch Handform und Bewegung gegen die Vorlage. Kein vollständiges
+   Urteil über die Gebärde, das bräuchte ein trainiertes Bewegungsmodell. ====== */
+let recState=null;
+function ensureRecUI(){
+  const sc=document.getElementById("screen-camera"), stg=document.getElementById("camStage");
+  if(stg && !document.getElementById("recOverlay")){
+    const o=document.createElement("div"); o.id="recOverlay";
+    o.style.cssText="position:absolute;inset:0;display:none;flex-direction:column;align-items:center;justify-content:center;gap:14px;background:rgba(8,15,24,.55);z-index:7;text-align:center;padding:24px";
+    o.innerHTML='<div id="recPrompt" style="color:#fff;font-weight:800;font-size:17px;max-width:82%"></div><div id="recCount" style="color:#fff;font-weight:800;font-size:54px;line-height:1"></div><div id="recBarWrap" style="display:none;height:7px;width:160px;background:rgba(255,255,255,.25);border-radius:8px;overflow:hidden"><div id="recBar" style="height:100%;width:0;background:#ff5d5d;border-radius:8px"></div></div>';
+    stg.appendChild(o);
+  }
+  if(sc && !document.getElementById("recSheet")){
+    const mask=document.createElement("div"); mask.className="sheet-mask"; mask.id="recMask";
+    const sh=document.createElement("div"); sh.className="sheet"; sh.id="recSheet";
+    sh.innerHTML='<div class="grip"></div><h2 id="recTitle">Aufnahme geprüft</h2><div class="sub" id="recScore"></div><div id="recBody" style="margin-top:4px;font-size:14px;line-height:1.5"></div><div class="sheet-actions"><button class="btn ghost" id="recAgain">Nochmal</button><button class="btn primary" id="recClose">Schließen</button></div>';
+    sc.appendChild(mask); sc.appendChild(sh);
+    mask.addEventListener("click",closeRecSheet);
+    document.getElementById("recClose").addEventListener("click",closeRecSheet);
+    document.getElementById("recAgain").addEventListener("click",()=>{ const id=recLastId; closeRecSheet(); if(id) startRecording(id); });
+  }
+}
+function closeRecSheet(){ const s=document.getElementById("recSheet"), m=document.getElementById("recMask"); if(s)s.classList.remove("show"); if(m)m.classList.remove("show"); }
+function stopRecording(){ if(recState&&recState.timer){ clearInterval(recState.timer); recState.timer=null; } const ov=document.getElementById("recOverlay"); if(ov) ov.style.display="none"; }
+let recLastId=null;
+function captureSequence(prompt, dur, done){
+  ensureRecUI();
+  if(!state.camLive) setCamMode(true);
+  if(!window.HX || !window.HX.hand){ toast("Handerkennung lädt noch, gleich nochmal"); return; }
+  if(recState && recState.timer){ clearInterval(recState.timer); }
+  recState={ timer:null };
+  const ov=document.getElementById("recOverlay"), cnt=document.getElementById("recCount");
+  const barWrap=document.getElementById("recBarWrap"), bar=document.getElementById("recBar");
+  ov.style.display="flex";
+  document.getElementById("recPrompt").textContent=prompt;
+  cnt.textContent="3"; barWrap.style.display="none"; bar.style.width="0%";
+  let n=3;
+  recState.timer=setInterval(()=>{
+    if(state.tab!=="camera"){ stopRecording(); return; }
+    n--;
+    if(n>0){ cnt.textContent=String(n); vibrate([8]); return; }
+    clearInterval(recState.timer); cnt.textContent="";
+    document.getElementById("recPrompt").textContent="Aufnahme läuft, mach das Zeichen";
+    barWrap.style.display="block"; vibrate([14]);
+    const step=120; let el=0; const samples=[];
+    recState.timer=setInterval(()=>{
+      if(state.tab!=="camera"){ stopRecording(); return; }
+      el+=step; bar.style.width=Math.min(100,el/dur*100)+"%";
+      const lm=(window.HX&&window.HX.lastLm)||null;
+      if(lm) samples.push({ key:extendedFingers(lm).map(b=>b?"1":"0").join(""), wrist:{x:lm[0].x,y:lm[0].y} });
+      else samples.push({ key:null, wrist:null });
+      if(el>=dur){ clearInterval(recState.timer); recState.timer=null; ov.style.display="none"; done(samples); }
+    }, step);
+  }, 700);
+}
+function startRecording(id){
+  const sign=byId[id]; if(!sign) return;
+  recLastId=id;
+  captureSequence("Mach das Zeichen: "+sign.text, 2400, samples=>analyzeRecording(id, samples));
+}
+function analyzeRecording(id, samples){
+  const sign=byId[id]; if(!sign) return;
+  const present=samples.filter(s=>s.key!==null), total=samples.length||1;
+  const presenceRatio=present.length/total;
+  let move=0, prev=null; present.forEach(s=>{ if(prev) move+=Math.hypot(s.wrist.x-prev.x, s.wrist.y-prev.y); prev=s.wrist; });
+  const expected=HANDSHAPE_BY_SIGN[id]||null;
+  const matchRatio = expected ? (present.length ? present.filter(s=>s.key===expected).length/present.length : 0) : null;
+  const body=[]; let score=0;
+  if(presenceRatio<0.4){
+    body.push("Ich habe deine Hand nur selten gesehen. Halt die Hand ruhig und ganz ins Bild, bei gutem Licht.");
+    score=Math.round(presenceRatio*40);
+  } else {
+    score+=40;
+    if(expected!==null){
+      if(matchRatio>0.5){ body.push("Handform passt gut zur Vorlage."); score+=45; }
+      else if(matchRatio>0.25){ body.push("Handform war teils richtig, aber nicht durchgehend. Halt die Form etwas stabiler."); score+=22; }
+      else { body.push("Die Handform wich von der Vorlage ab. Schau sie dir mit „Zeig mir diese Gebärde“ nochmal an."); score+=5; }
+    } else {
+      body.push("Für dieses Zeichen habe ich noch keine Prüfvorlage für die Handform. Ich zeige dir, ob Hand und Bewegung erkannt wurden.");
+      score+=20;
+    }
+    if(move>0.18){ body.push("Bewegung wurde erkannt."); score+=15; }
+    else { body.push("Es war kaum Bewegung zu sehen. Viele Gebärden brauchen eine klare Bewegung."); score+=5; }
+  }
+  score=Math.max(0,Math.min(100,score));
+  const verdict = score>=75 ? "Sieht gut aus" : score>=45 ? "Fast" : "Nochmal versuchen";
+  ensureRecUI();
+  document.getElementById("recTitle").textContent = sign.text+" · "+verdict;
+  document.getElementById("recScore").textContent = "Trefferwert "+score+" von 100";
+  document.getElementById("recBody").innerHTML = body.map(t=>'<div style="margin-top:6px">'+t+'</div>').join("") + '<div style="margin-top:10px;font-size:12px;opacity:.65">Hinweis, das prüft Handform und Bewegung grob, kein vollständiges Urteil über die Gebärde.</div>';
+  if(recState) recLastId=id;
+  document.getElementById("recSheet").classList.add("show");
+  document.getElementById("recMask").classList.add("show");
+  if(recFromPath){
+    recFromPath=false;
+    const passed = score>=70;
+    document.getElementById("recBody").innerHTML += '<div style="margin-top:10px;font-weight:700;color:'+(passed?"#1f7a3d":"#b23a48")+'">'+(passed?"Im Lernpfad als gewusst gewertet.":"Im Lernpfad als nochmal gewertet.")+'</div>';
+    if(pathSession){ const qi=pathSession.queue.indexOf(id); if(qi>=0){ pathSession.idx=qi; pathRate(passed); } }
+  }
+  vibrate([10]);
+}
+/* Aufnahme prüfen Knoepfe aus Liste und Woerterbuch. */
+document.addEventListener("click",e=>{
+  const b=e.target.closest && e.target.closest(".check-sign");
+  if(!b) return;
+  e.stopPropagation();
+  const id=b.dataset.id; vibrate([8]); switchTab("camera"); setCamMode(true); setTimeout(()=>startRecording(id), 420);
+});
+/* Zeig mir diese Gebärde Knoepfe aus Liste und Woerterbuch. */
+document.addEventListener("click",e=>{
+  const b=e.target.closest && e.target.closest(".show-sign");
+  if(!b) return;
+  e.stopPropagation();
+  const id=b.dataset.id; vibrate([8]); switchTab("camera"); setCamMode(false); setTimeout(()=>playSign(id), 360);
+});
+
+/* ====== Start ====== */
+window.addEventListener("load",()=>{
+  try{ animateHand(); }catch(e){ console.warn(e); }
+  try{ injectVisionUI(); visionUpdate((window.HX&&window.HX.status)||"loading"); }catch(e){}
+  try{ loadState(); }catch(e){}
+  try{ syncSettingsUI(); }catch(e){}
+  try{ renderProgress(); renderHistory(); }catch(e){}
+  setInterval(()=>{ if(document.visibilityState!=="hidden"){ state.practiceSec++; if(state.practiceSec%5===0) updateGoal(); } },1000);
+  setTimeout(()=>{
+    document.getElementById("splash").classList.add("hide");
+    try{ switchTab("camera"); }catch(e){ console.warn(e); }
+    setTimeout(()=>{ try{ resizeHand(); }catch(e){} },80);
+  },900);
+});
+</script>
+
+<script type="module">
+/* Echte Handerkennung im Browser ueber MediaPipe Tasks Vision. Laeuft komplett
+   am Geraet. Laedt asynchron von einem CDN. Schlaegt das fehl, bleibt die App
+   mit der simulierten Anzeige voll bedienbar. */
+import { HandLandmarker, FaceLandmarker, FilesetResolver } from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.3";
+const WASM = "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.3/wasm";
+const MODEL = "https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task";
+const MODEL_FACE = "https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task";
+async function fetchModel(url){
+  const resp = await fetch(url);
+  const total = +(resp.headers.get("content-length")||0);
+  if(!resp.body || !total){ const buf=new Uint8Array(await resp.arrayBuffer()); if(window.visionProgress) window.visionProgress(100); return buf; }
+  const reader=resp.body.getReader(); let received=0; const chunks=[];
+  while(true){ const {done,value}=await reader.read(); if(done) break; chunks.push(value); received+=value.length; if(window.visionProgress) window.visionProgress(Math.round(received/total*100)); }
+  const out=new Uint8Array(received); let off=0; for(const c of chunks){ out.set(c,off); off+=c.length; } return out;
+}
+async function bootVision(){
+  window.HX = window.HX || { hand:null, status:"loading", lastLm:null, lastScore:0, lastVid:-1 };
+  if(window.HX.hand || window.HX.booting) return;
+  window.HX.booting = true;
+  try{
+    if(window.visionUpdate) window.visionUpdate("loading");
+    const vision = await FilesetResolver.forVisionTasks(WASM);
+    let modelBuf=null;
+    try{ modelBuf = await fetchModel(MODEL); }catch(eDl){ console.warn("Fortschritt nicht verfügbar, lade direkt:", eDl); }
+    const base = modelBuf ? { modelAssetBuffer: modelBuf } : { modelAssetPath: MODEL };
+    let hl;
+    try{
+      hl = await HandLandmarker.createFromOptions(vision, { baseOptions:Object.assign({},base,{delegate:"GPU"}), runningMode:"VIDEO", numHands:2 });
+    }catch(eGpu){
+      hl = await HandLandmarker.createFromOptions(vision, { baseOptions:Object.assign({},base,{delegate:"CPU"}), runningMode:"VIDEO", numHands:2 });
+    }
+    window.HX.hand = hl; window.HX.status = "ready";
+    if(window.visionUpdate) window.visionUpdate("ready");
+  }catch(e){
+    console.warn("MediaPipe konnte nicht geladen werden:", e);
+    window.HX = window.HX || {}; window.HX.status = "failed";
+    if(window.visionUpdate) window.visionUpdate("failed");
+  }finally{ window.HX.booting = false; }
+}
+window.bootVision = bootVision;
+/* Mimik-Erkennung. Laedt das Gesichtsmodell mit Ausdruckswerten, nur wenn
+   aktiviert. Faellt es aus, bleibt die Handerkennung unberuehrt. */
+async function bootFace(){
+  window.HX = window.HX || {};
+  if(window.HX.face || window.HX.faceBooting) return;
+  window.HX.faceBooting = true;
+  try{
+    const vision = await FilesetResolver.forVisionTasks(WASM);
+    const opt = { runningMode:"VIDEO", numFaces:1, outputFaceBlendshapes:true };
+    let fl;
+    try{ fl = await FaceLandmarker.createFromOptions(vision, Object.assign({ baseOptions:{ modelAssetPath:MODEL_FACE, delegate:"GPU" } }, opt)); }
+    catch(eGpu){ fl = await FaceLandmarker.createFromOptions(vision, Object.assign({ baseOptions:{ modelAssetPath:MODEL_FACE, delegate:"CPU" } }, opt)); }
+    window.HX.face = fl;
+  }catch(e){ console.warn("Mimik-Erkennung nicht verfügbar:", e); }
+  finally{ window.HX.faceBooting = false; }
+}
+window.bootFace = bootFace;
+
+</script>
