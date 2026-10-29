@@ -168,10 +168,6 @@ Die App läuft danach unter **https://tscheky.github.io/hearingx/hearingx.html**
 
 <div align="center">
 
-## 👤 Autor
-
-**Tscheky**
-IT Netzwerktechniker in Ausbildung · Schulungszentrum Fohnsdorf
 
 [![GitHub](https://img.shields.io/badge/GitHub-Tscheky-181717?style=for-the-badge&logo=github)](https://github.com/Tscheky)
 
